@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { careerService } from '@/lib/supabase-service'
-import { supabase } from '@/lib/supabase'
+import { useBasicSecurityForm } from '@/lib/security'
 import { toast } from 'react-hot-toast'
 import { 
   GraduationCap, 
@@ -12,42 +12,58 @@ import {
   X,
   BookOpen,
   Clock,
-  FileText
+  FileText,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react'
 
 interface CareerFormData {
   name: string
   description: string
   duration_years: number
+  is_active: boolean
 }
 
-interface CreateCareerFormProps {
+interface EditCareerFormProps {
+  career: {
+    id: string
+    name: string
+    description: string
+    duration_years: number
+    is_active: boolean
+  }
   onClose: () => void
   onSave: () => void
 }
 
-export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormProps) {
+export default function EditCareerForm({ career, onClose, onSave }: EditCareerFormProps) {
   const [formData, setFormData] = useState<CareerFormData>({
-    name: '',
-    description: '',
-    duration_years: 4
+    name: career.name,
+    description: career.description,
+    duration_years: career.duration_years,
+    is_active: career.is_active
   })
 
-  const [errors, setErrors] = useState<Partial<CareerFormData>>({})
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
 
+  // Hook de seguridad para el formulario
+  const { processFormData, isProcessing } = useBasicSecurityForm<CareerFormData>('forms')
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
+    const { name, value, type } = e.target
+    
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'duration_years' ? parseInt(value) : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
+              name === 'duration_years' ? parseInt(value) : value
     }))
     
     // Limpiar error cuando el usuario empiece a escribir
-    if (errors[name as keyof CareerFormData]) {
+    if (errors[name]) {
       setErrors(prev => ({
         ...prev,
-        [name]: ''
+        [name]: []
       }))
     }
   }
@@ -67,52 +83,51 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!validateForm()) {
-      return
-    }
-
     setLoading(true)
+    setErrors({})
+
     try {
-      // Obtener el usuario actual y su institución
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        toast.error('Usuario no autenticado')
+      // Procesar datos con seguridad
+      const fieldMappings = {
+        name: 'name',
+        description: 'description',
+        duration_years: 'number'
+      }
+
+      const securityResult = await processFormData(formData, fieldMappings)
+
+      // Verificar si hay errores de seguridad
+      if (!securityResult.isValid) {
+        setErrors(securityResult.errors)
+        
+        // Mostrar errores específicos
+        if (securityResult.errors._rateLimit) {
+          toast.error(securityResult.errors._rateLimit[0])
+        } else if (securityResult.errors._system) {
+          toast.error(securityResult.errors._system[0])
+        } else {
+          // Mostrar errores de campos específicos
+          const firstError = Object.values(securityResult.errors)[0]?.[0]
+          if (firstError) {
+            toast.error(firstError)
+          }
+        }
         return
       }
 
-      // Obtener la institución del usuario
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('institution_id')
-        .eq('id', user.id)
-        .single()
-
-      if (userError || !userData) {
-        console.error('Error obteniendo institución del usuario:', userError)
-        toast.error('Error obteniendo información del usuario')
-        return
-      }
-
-      // Crear carrera en Supabase
-      const careerData = {
-        institution_id: userData.institution_id,
-        name: formData.name,
-        description: formData.description,
-        duration_years: formData.duration_years,
-        is_active: true
-      }
-
-      const newCareer = await careerService.create(careerData)
-      console.log('Carrera creada:', newCareer)
+      // Usar datos sanitizados
+      const { sanitizedData } = securityResult
       
-      toast.success('Carrera creada exitosamente')
+      // Actualizar carrera en Supabase
+      await careerService.update(career.id, sanitizedData)
+      console.log('Carrera actualizada:', sanitizedData)
+      
+      toast.success('Carrera actualizada exitosamente')
       onSave()
       onClose()
     } catch (error) {
-      console.error('Error al crear carrera:', error)
-      toast.error('Error al crear la carrera')
+      console.error('Error al actualizar carrera:', error)
+      toast.error('Error al actualizar la carrera')
     } finally {
       setLoading(false)
     }
@@ -129,8 +144,8 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
                 <GraduationCap className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Nueva Carrera</h2>
-                <p className="text-sm text-gray-500">Crea una nueva carrera académica</p>
+                <h2 className="text-2xl font-bold text-gray-900">Editar Carrera</h2>
+                <p className="text-sm text-gray-500">Modifica la información de la carrera</p>
               </div>
             </div>
             <Button variant="outline" onClick={onClose}>
@@ -139,12 +154,12 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Información de la Carrera */}
+            {/* Información Básica */}
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
-                  Información de la Carrera
+                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                  Información Básica
                 </h3>
               </CardHeader>
               <CardContent>
@@ -164,7 +179,7 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
                       placeholder="Ej: Ingeniería en Sistemas"
                     />
                     {errors.name && (
-                      <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.name[0]}</p>
                     )}
                   </div>
 
@@ -176,17 +191,30 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
                       name="description"
                       value={formData.description}
                       onChange={handleChange}
-                      rows={4}
+                      rows={3}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.description ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Describe los objetivos y características de la carrera..."
                     />
                     {errors.description && (
-                      <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.description[0]}</p>
                     )}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
 
+            {/* Configuración */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-green-600" />
+                  Configuración
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Duración en Años *
@@ -199,47 +227,36 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
                         errors.duration_years ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
-                      <option value={1}>1 año</option>
-                      <option value={2}>2 años</option>
-                      <option value={3}>3 años</option>
-                      <option value={4}>4 años</option>
-                      <option value={5}>5 años</option>
-                      <option value={6}>6 años</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(year => (
+                        <option key={year} value={year}>{year} año{year > 1 ? 's' : ''}</option>
+                      ))}
                     </select>
                     {errors.duration_years && (
-                      <p className="text-red-500 text-xs mt-1">{errors.duration_years}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.duration_years[0]}</p>
                     )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Información Adicional */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-green-600" />
-                  Información Adicional
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-start">
-                    <Clock className="h-5 w-5 text-blue-600 mt-0.5 mr-3" />
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <h4 className="text-sm font-medium text-blue-900 mb-1">
-                        Próximos Pasos
-                      </h4>
-                      <p className="text-sm text-blue-700">
-                        Después de crear la carrera, podrás:
+                      <h4 className="text-sm font-medium text-gray-900">Estado de la Carrera</h4>
+                      <p className="text-sm text-gray-500">
+                        {formData.is_active 
+                          ? 'La carrera está activa y disponible para inscripciones'
+                          : 'La carrera está inactiva y no acepta nuevas inscripciones'
+                        }
                       </p>
-                      <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                        <li>• Agregar materias a cada año de la carrera</li>
-                        <li>• Configurar correlatividades entre materias</li>
-                        <li>• Asignar profesores a las materias</li>
-                        <li>• Inscribir estudiantes en la carrera</li>
-                      </ul>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                      className="flex items-center space-x-2"
+                    >
+                      {formData.is_active ? (
+                        <ToggleRight className="h-8 w-8 text-green-600" />
+                      ) : (
+                        <ToggleLeft className="h-8 w-8 text-gray-400" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </CardContent>
@@ -250,16 +267,16 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
+              <Button type="submit" disabled={loading || isProcessing}>
+                {loading || isProcessing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creando...
+                    Guardando...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Crear Carrera
+                    Guardar Cambios
                   </>
                 )}
               </Button>

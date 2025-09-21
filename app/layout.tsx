@@ -5,6 +5,11 @@ import './globals.css'
 export const metadata = {
   title: 'Sistema de Gestión Educativa',
   description: 'Plataforma modular para gestión educativa multi-tenant',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

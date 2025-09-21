@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { studentService, careerService } from '@/lib/supabase-service'
+import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { 
   User, 
@@ -93,20 +94,31 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
 
     setLoading(true)
     try {
-      // Crear usuario primero
-      const userData = {
-        institution_id: '7de7ceb2-fe97-4d1a-8479-0b90e0144e7d', // ID de la institución por defecto
-        email: formData.email,
-        role: 'student',
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        phone: formData.phone
+      // Obtener el usuario actual y su institución
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        toast.error('Usuario no autenticado')
+        return
+      }
+
+      // Obtener la institución del usuario
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('institution_id')
+        .eq('id', user.id)
+        .single()
+
+      if (userError || !userData) {
+        console.error('Error obteniendo institución del usuario:', userError)
+        toast.error('Error obteniendo información del usuario')
+        return
       }
 
       // Crear estudiante sin carrera asignada
       const studentData = {
         user_id: '', // Se asignará después de crear el usuario
-        institution_id: '7de7ceb2-fe97-4d1a-8479-0b90e0144e7d',
+        institution_id: userData.institution_id,
         career_id: null, // Sin carrera asignada inicialmente
         student_number: `2024${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
         enrollment_date: new Date().toISOString().split('T')[0],

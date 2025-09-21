@@ -5,6 +5,9 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import CreateCareerForm from '@/components/forms/CreateCareerForm'
+import EditCareerForm from '@/components/forms/EditCareerForm'
+import CareerConfigModal from '@/components/modals/CareerConfigModal'
+import DeleteCareerModal from '@/components/modals/DeleteCareerModal'
 import { careerService } from '@/lib/supabase-service'
 import { toast } from 'react-hot-toast'
 import { 
@@ -23,6 +26,10 @@ export default function CareersPage() {
   const [careers, setCareers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [showConfigModal, setShowConfigModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedCareer, setSelectedCareer] = useState<any>(null)
 
   // Cargar carreras al montar el componente
   useEffect(() => {
@@ -45,6 +52,34 @@ export default function CareersPage() {
   const handleCreateCareer = () => {
     loadCareers()
     setShowCreateForm(false)
+  }
+
+  const handleEditCareer = (career: any) => {
+    setSelectedCareer(career)
+    setShowEditForm(true)
+  }
+
+  const handleConfigCareer = (career: any) => {
+    setSelectedCareer(career)
+    setShowConfigModal(true)
+  }
+
+  const handleDeleteCareer = (career: any) => {
+    setSelectedCareer(career)
+    setShowDeleteModal(true)
+  }
+
+  const handleCareerUpdated = () => {
+    loadCareers()
+    setShowEditForm(false)
+    setShowConfigModal(false)
+    setSelectedCareer(null)
+  }
+
+  const handleCareerDeleted = () => {
+    loadCareers()
+    setShowDeleteModal(false)
+    setSelectedCareer(null)
   }
 
   return (
@@ -194,14 +229,19 @@ export default function CareersPage() {
                         }`}>
                           {career.is_active ? 'Activa' : 'Inactiva'}
                         </span>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleConfigCareer(career)}>
                           <Settings className="h-4 w-4 mr-1" />
                           Configurar
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleEditCareer(career)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleDeleteCareer(career)}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -218,6 +258,42 @@ export default function CareersPage() {
           <CreateCareerForm
             onClose={() => setShowCreateForm(false)}
             onSave={handleCreateCareer}
+          />
+        )}
+
+        {/* Modal de editar carrera */}
+        {showEditForm && selectedCareer && (
+          <EditCareerForm
+            career={selectedCareer}
+            onClose={() => {
+              setShowEditForm(false)
+              setSelectedCareer(null)
+            }}
+            onSave={handleCareerUpdated}
+          />
+        )}
+
+        {/* Modal de configuración de carrera */}
+        {showConfigModal && selectedCareer && (
+          <CareerConfigModal
+            career={selectedCareer}
+            onClose={() => {
+              setShowConfigModal(false)
+              setSelectedCareer(null)
+            }}
+            onSave={handleCareerUpdated}
+          />
+        )}
+
+        {/* Modal de eliminar carrera */}
+        {showDeleteModal && selectedCareer && (
+          <DeleteCareerModal
+            career={selectedCareer}
+            onClose={() => {
+              setShowDeleteModal(false)
+              setSelectedCareer(null)
+            }}
+            onConfirm={handleCareerDeleted}
           />
         )}
       </div>

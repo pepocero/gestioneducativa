@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
+import { useBasicSecurityForm } from '@/lib/security/use-security-form'
+import { SecurityEventType } from '@/lib/security/security-logger'
 
 // Componente Modal para confirmación de email
 function EmailConfirmationModal({ isOpen, onClose, email }: { isOpen: boolean, onClose: () => void, email: string }) {
@@ -63,16 +65,55 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
+  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
   const { signIn } = useAuth()
   const router = useRouter()
+  
+  // Hook de seguridad para el formulario de login
+  const { processFormData, isProcessing, getRateLimitInfo } = useBasicSecurityForm<{
+    email: string
+    password: string
+  }>('login')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setFormErrors({})
 
     try {
-      console.log('🔐 Intentando hacer login...')
-      const { error } = await signIn(email, password)
+      // Procesar datos con seguridad
+      const formData = { email, password }
+      const fieldMappings = {
+        email: 'email',
+        password: 'password'
+      }
+
+      const securityResult = await processFormData(formData, fieldMappings)
+
+      // Verificar si hay errores de seguridad
+      if (!securityResult.isValid) {
+        setFormErrors(securityResult.errors)
+        
+        // Mostrar errores específicos
+        if (securityResult.errors._rateLimit) {
+          toast.error(securityResult.errors._rateLimit[0])
+        } else if (securityResult.errors._system) {
+          toast.error(securityResult.errors._system[0])
+        } else {
+          // Mostrar errores de campos específicos
+          const firstError = Object.values(securityResult.errors)[0]?.[0]
+          if (firstError) {
+            toast.error(firstError)
+          }
+        }
+        return
+      }
+
+      // Usar datos sanitizados
+      const { sanitizedData } = securityResult
+      console.log('🔐 Intentando hacer login con datos sanitizados...')
+      
+      const { error } = await signIn(sanitizedData.email, sanitizedData.password)
       
       if (error) {
         console.error('❌ Error en login:', error)
@@ -124,11 +165,16 @@ export default function LoginForm() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                    formErrors.email ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Dirección de email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                {formErrors.email && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.email[0]}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="password" className="sr-only">
@@ -140,21 +186,26 @@ export default function LoginForm() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                    formErrors.password ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {formErrors.password && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.password[0]}</p>
+                )}
               </div>
             </div>
 
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isProcessing}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                {loading || isProcessing ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </button>
             </div>
 
