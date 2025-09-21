@@ -1,19 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
-import { subjectService, careerService, cycleService } from '@/lib/supabase-service'
-import { supabase } from '@/lib/supabase'
+import { subjectService, userService } from '@/lib/supabase-service'
+import { useBasicSecurityForm } from '@/lib/security'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
 import { 
   BookOpen, 
   Save, 
   X,
   Clock,
-  Hash,
   GraduationCap,
-  FileText
+  FileText,
+  Hash
 } from 'lucide-react'
 
 interface SubjectFormData {
@@ -22,121 +24,119 @@ interface SubjectFormData {
   description: string
   credits: number
   hours_per_week: number
-  cycle_id: string
   career_id: string
-  year: number
+  is_active: boolean
 }
 
 interface CreateSubjectFormProps {
+  careers: any[]
   onClose: () => void
   onSave: () => void
 }
 
-export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectFormProps) {
+export default function CreateSubjectForm({ careers, onClose, onSave }: CreateSubjectFormProps) {
   const [formData, setFormData] = useState<SubjectFormData>({
     name: '',
     code: '',
     description: '',
     credits: 3,
     hours_per_week: 4,
-    cycle_id: '',
-    career_id: '',
-    year: 1
+    career_id: careers.length > 0 ? careers[0].id : '',
+    is_active: true
   })
 
-  const [errors, setErrors] = useState<Partial<SubjectFormData>>({})
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
-  const [careers, setCareers] = useState<any[]>([])
+  const { user } = useAuth()
 
-  // Cargar carreras al montar el componente
-  useEffect(() => {
-    const loadCareers = async () => {
-      try {
-        const careersData = await careerService.getAll()
-        setCareers(careersData)
-      } catch (error) {
-        console.error('Error cargando carreras:', error)
-        toast.error('Error cargando carreras')
-      }
-    }
-    loadCareers()
-  }, [])
+  // Hook de seguridad para el formulario
+  const { processFormData, isProcessing } = useBasicSecurityForm<SubjectFormData>('forms')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
+    const { name, value, type } = e.target
+    
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'credits' || name === 'hours_per_week' || name === 'year' ? parseInt(value) : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
+              name === 'credits' || name === 'hours_per_week' ? parseInt(value) || 0 : value
     }))
     
     // Limpiar error cuando el usuario empiece a escribir
-    if (errors[name as keyof SubjectFormData]) {
+    if (errors[name]) {
       setErrors(prev => ({
         ...prev,
-        [name]: ''
+        [name]: []
       }))
     }
   }
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<SubjectFormData> = {}
-
-    if (!formData.name.trim()) newErrors.name = 'El nombre de la materia es requerido'
-    if (!formData.code.trim()) newErrors.code = 'El código de la materia es requerido'
-    if (!formData.description.trim()) newErrors.description = 'La descripción es requerida'
-    if (!formData.career_id) newErrors.career_id = 'La carrera es requerida'
-    if (formData.credits < 1 || formData.credits > 20) {
-      newErrors.credits = 'Los créditos deben estar entre 1 y 20'
-    }
-    if (formData.hours_per_week < 1 || formData.hours_per_week > 20) {
-      newErrors.hours_per_week = 'Las horas por semana deben estar entre 1 y 20'
-    }
-    if (formData.year < 1 || formData.year > 10) {
-      newErrors.year = 'El año debe estar entre 1 y 10'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!validateForm()) {
-      return
-    }
-
     setLoading(true)
+    setErrors({})
+
     try {
-      // Primero crear o encontrar el ciclo
-      let cycle_id = formData.cycle_id
-      
-      if (!cycle_id) {
-        // Crear el ciclo si no existe
-        const cycleData = {
-          career_id: formData.career_id,
-          name: `${formData.year}° Año`,
-          year: formData.year,
-          is_active: true
-        }
+      // Procesar datos con seguridad
+      const fieldMappings = {
+        name: 'name',
+        code: 'code',
+        description: 'description',
+        credits: 'number',
+        hours_per_week: 'number',
+        career_id: 'uuid'
+      }
+
+      const securityResult = await processFormData(formData, fieldMappings)
+
+      // Verificar si hay errores de seguridad
+      if (!securityResult.isValid) {
+        setErrors(securityResult.errors)
         
-        const newCycle = await cycleService.create(cycleData)
-        cycle_id = newCycle.id
+        // Mostrar errores específicos
+        if (securityResult.errors._rateLimit) {
+          toast.error(securityResult.errors._rateLimit[0])
+        } else if (securityResult.errors._system) {
+          toast.error(securityResult.errors._system[0])
+        } else {
+          // Mostrar errores de campos específicos
+          const firstError = Object.values(securityResult.errors)[0]?.[0]
+          if (firstError) {
+            toast.error(firstError)
+          }
+        }
+        return
       }
 
-      // Crear materia en Supabase
+      // Usar datos sanitizados
+      const { sanitizedData } = securityResult
+      
+      // Obtener institution_id del usuario actual consultando directamente la tabla users
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      if (!authUser) {
+        toast.error('No se pudo obtener la información del usuario autenticado')
+        return
+      }
+      
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('institution_id')
+        .eq('auth_user_id', authUser.id)
+        .single()
+      
+      if (userError || !userData) {
+        toast.error('No se pudo obtener la información de la institución')
+        return
+      }
+      
       const subjectData = {
-        cycle_id: cycle_id,
-        name: formData.name,
-        code: formData.code,
-        description: formData.description,
-        credits: formData.credits,
-        hours_per_week: formData.hours_per_week,
-        is_active: true
+        ...sanitizedData,
+        institution_id: userData.institution_id
       }
-
-      const newSubject = await subjectService.create(subjectData)
-      console.log('Materia creada:', newSubject)
+      
+      // Crear materia en Supabase
+      await subjectService.create(subjectData)
+      console.log('Materia creada:', subjectData)
       
       toast.success('Materia creada exitosamente')
       onSave()
@@ -151,7 +151,7 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -161,7 +161,7 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Nueva Materia</h2>
-                <p className="text-sm text-gray-500">Agrega una nueva materia a una carrera</p>
+                <p className="text-sm text-gray-500">Crea una nueva materia académica</p>
               </div>
             </div>
             <Button variant="outline" onClick={onClose}>
@@ -170,16 +170,16 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Información de la Materia */}
+            {/* Información Básica */}
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
-                  Información de la Materia
+                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                  Información Básica
                 </h3>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Nombre de la Materia *
@@ -195,7 +195,7 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
                       placeholder="Ej: Programación I"
                     />
                     {errors.name && (
-                      <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.name[0]}</p>
                     )}
                   </div>
 
@@ -211,16 +211,16 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.code ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Ej: PROG-101"
+                      placeholder="Ej: PROG101"
                     />
                     {errors.code && (
-                      <p className="text-red-500 text-xs mt-1">{errors.code}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.code[0]}</p>
                     )}
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descripción *
+                      Descripción
                     </label>
                     <textarea
                       name="description"
@@ -233,23 +233,10 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
                       placeholder="Describe los objetivos y contenido de la materia..."
                     />
                     {errors.description && (
-                      <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.description[0]}</p>
                     )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Configuración Académica */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <GraduationCap className="h-5 w-5 mr-2 text-purple-600" />
-                  Configuración Académica
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Carrera *
@@ -270,34 +257,23 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
                       ))}
                     </select>
                     {errors.career_id && (
-                      <p className="text-red-500 text-xs mt-1">{errors.career_id}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.career_id[0]}</p>
                     )}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Año *
-                    </label>
-                    <select
-                      name="year"
-                      value={formData.year}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.year ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value={1}>1er Año</option>
-                      <option value={2}>2do Año</option>
-                      <option value={3}>3er Año</option>
-                      <option value={4}>4to Año</option>
-                      <option value={5}>5to Año</option>
-                      <option value={6}>6to Año</option>
-                    </select>
-                    {errors.year && (
-                      <p className="text-red-500 text-xs mt-1">{errors.year}</p>
-                    )}
-                  </div>
-
+            {/* Configuración Académica */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <GraduationCap className="h-5 w-5 mr-2 text-green-600" />
+                  Configuración Académica
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Créditos *
@@ -308,35 +284,76 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
                       value={formData.credits}
                       onChange={handleChange}
                       min="1"
-                      max="20"
+                      max="10"
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.credits ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
                     {errors.credits && (
-                      <p className="text-red-500 text-xs mt-1">{errors.credits}</p>
+                      <p className="text-red-500 text-xs mt-1">{errors.credits[0]}</p>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">Número de créditos académicos</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Horas por Semana *
+                    </label>
+                    <input
+                      type="number"
+                      name="hours_per_week"
+                      value={formData.hours_per_week}
+                      onChange={handleChange}
+                      min="1"
+                      max="20"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        errors.hours_per_week ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.hours_per_week && (
+                      <p className="text-red-500 text-xs mt-1">{errors.hours_per_week[0]}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">Horas de clase por semana</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Horas por Semana *
-                  </label>
-                  <input
-                    type="number"
-                    name="hours_per_week"
-                    value={formData.hours_per_week}
-                    onChange={handleChange}
-                    min="1"
-                    max="20"
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.hours_per_week ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.hours_per_week && (
-                    <p className="text-red-500 text-xs mt-1">{errors.hours_per_week}</p>
-                  )}
+            {/* Estado */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <Hash className="h-5 w-5 mr-2 text-purple-600" />
+                  Estado
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900">Estado de la Materia</h4>
+                    <p className="text-sm text-gray-500">
+                      {formData.is_active 
+                        ? 'La materia está activa y disponible para asignación'
+                        : 'La materia está inactiva y no se puede asignar'
+                      }
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                    className="flex items-center space-x-2"
+                  >
+                    <span className={`text-sm font-medium ${formData.is_active ? 'text-green-600' : 'text-gray-400'}`}>
+                      {formData.is_active ? 'Activa' : 'Inactiva'}
+                    </span>
+                    <div className={`w-12 h-6 rounded-full transition-colors ${
+                      formData.is_active ? 'bg-green-500' : 'bg-gray-300'
+                    }`}>
+                      <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                        formData.is_active ? 'translate-x-6' : 'translate-x-0.5'
+                      } mt-0.5`}></div>
+                    </div>
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -346,8 +363,8 @@ export default function CreateSubjectForm({ onClose, onSave }: CreateSubjectForm
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
+              <Button type="submit" disabled={loading || isProcessing}>
+                {loading || isProcessing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Creando...

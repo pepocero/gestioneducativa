@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Layout, Header, Sidebar, Main, Container, PageHeader } from '@/components/ui/Layout'
@@ -18,7 +19,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Calendar
 } from 'lucide-react'
 
 interface UserProfile {
@@ -32,8 +34,8 @@ interface UserProfile {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut, loading } = useAuth()
+  const { user: currentUser, loading: userLoading, isAdmin, isProfessor, isStudent } = useCurrentUser()
   const router = useRouter()
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [stats, setStats] = useState({
     students: 0,
@@ -49,39 +51,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [user, loading, router])
 
   useEffect(() => {
-    if (user) {
-      fetchUserProfile()
+    if (currentUser) {
       fetchStats()
     }
-  }, [user])
-
-  const fetchUserProfile = async () => {
-    try {
-      // Crear un perfil básico usando solo los datos de Supabase Auth
-      const userProfile: UserProfile = {
-        id: user?.id || '',
-        email: user?.email || '',
-        role: 'admin', // Por defecto admin
-        first_name: user?.user_metadata?.first_name || 'Usuario',
-        last_name: user?.user_metadata?.last_name || 'Admin',
-        institution_id: ''
-      }
-      
-      setUserProfile(userProfile)
-      console.log('✅ Perfil de usuario creado desde Auth metadata')
-    } catch (error) {
-      console.error('Error creating user profile:', error)
-      // Crear un perfil temporal para que funcione
-      setUserProfile({
-        id: user?.id || '',
-        email: user?.email || '',
-        role: 'admin',
-        first_name: 'Usuario',
-        last_name: 'Admin',
-        institution_id: ''
-      })
-    }
-  }
+  }, [currentUser])
 
   const fetchStats = async () => {
     try {
@@ -115,18 +88,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: ['admin', 'professor', 'student'] },
     ]
 
-    if (userProfile?.role === 'admin') {
+    // Si currentUser no está cargado aún, mostrar menú básico
+    if (!currentUser) {
+      return [
+        ...baseItems,
+        { name: 'Carreras', href: '/admin/careers', icon: GraduationCap, roles: ['admin'] },
+        { name: 'Materias', href: '/admin/subjects', icon: BookOpen, roles: ['admin'] },
+        { name: 'Ciclos', href: '/admin/cycles', icon: Calendar, roles: ['admin'] },
+      ]
+    }
+
+    if (isAdmin) {
       return [
         ...baseItems,
         { name: 'Instituciones', href: '/admin/institutions', icon: Settings, roles: ['admin'] },
         { name: 'Usuarios', href: '/admin/users', icon: Users, roles: ['admin'] },
         { name: 'Carreras', href: '/admin/careers', icon: GraduationCap, roles: ['admin'] },
         { name: 'Materias', href: '/admin/subjects', icon: BookOpen, roles: ['admin'] },
+        { name: 'Ciclos', href: '/admin/cycles', icon: Calendar, roles: ['admin'] },
         { name: 'Estudiantes', href: '/admin/students', icon: UserCheck, roles: ['admin'] },
       ]
     }
 
-    if (userProfile?.role === 'professor') {
+    if (isProfessor) {
       return [
         ...baseItems,
         { name: 'Mis Materias', href: '/professor/subjects', icon: BookOpen, roles: ['professor'] },
@@ -134,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ]
     }
 
-    if (userProfile?.role === 'student') {
+    if (isStudent) {
       return [
         ...baseItems,
         { name: 'Mis Materias', href: '/student/subjects', icon: BookOpen, roles: ['student'] },
@@ -145,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return baseItems
   }
 
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
@@ -158,6 +142,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const navigationItems = getNavigationItems()
+
 
   return (
     <Layout>
@@ -178,9 +163,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-700">
-                {userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : user.email}
+                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : user?.email}
               </span>
-              <RoleBadge role={userProfile?.role || 'admin'} />
+              <RoleBadge role={currentUser?.role || 'admin'} />
             </div>
             <Button
               variant="outline"

@@ -40,6 +40,14 @@ export interface ValidationResult {
 }
 
 /**
+ * Valida si una cadena es un UUID válido
+ */
+function isValidUUID(input: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(input)
+}
+
+/**
  * Sanitiza una cadena de texto eliminando caracteres peligrosos
  */
 export function sanitizeString(
@@ -69,6 +77,17 @@ export function sanitizeString(
 
   // Limpiar espacios en blanco
   sanitizedValue = sanitizedValue.trim()
+
+  // Si es un UUID válido, no aplicar límite de longitud
+  if (isValidUUID(sanitizedValue)) {
+    // Los UUIDs son seguros y no necesitan sanitización adicional
+    return {
+      isValid: true,
+      sanitizedValue: sanitizedValue,
+      errors: [],
+      warnings: []
+    }
+  }
 
   // Verificar longitud máxima
   if (sanitizedValue.length > maxLength) {

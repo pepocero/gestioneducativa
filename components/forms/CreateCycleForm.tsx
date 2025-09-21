@@ -3,58 +3,52 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
-import { careerService } from '@/lib/supabase-service'
+import { cycleService } from '@/lib/supabase-service'
 import { useBasicSecurityForm } from '@/lib/security'
 import { toast } from 'react-hot-toast'
 import { 
-  GraduationCap, 
+  Calendar, 
   Save, 
   X,
-  Clock,
+  GraduationCap,
   FileText,
   Hash
 } from 'lucide-react'
 
-interface CareerConfigData {
+interface CycleFormData {
   name: string
-  description: string
-  duration_years: number
+  year: number
+  career_id: string
   is_active: boolean
 }
 
-interface CareerConfigModalProps {
-  career: {
-    id: string
-    name: string
-    description: string
-    duration_years: number
-    is_active: boolean
-  }
+interface CreateCycleFormProps {
+  careers: any[]
   onClose: () => void
   onSave: () => void
 }
 
-export default function CareerConfigModal({ career, onClose, onSave }: CareerConfigModalProps) {
-  const [formData, setFormData] = useState<CareerConfigData>({
-    name: career.name,
-    description: career.description,
-    duration_years: career.duration_years,
-    is_active: career.is_active
+export default function CreateCycleForm({ careers, onClose, onSave }: CreateCycleFormProps) {
+  const [formData, setFormData] = useState<CycleFormData>({
+    name: '',
+    year: 1,
+    career_id: careers.length > 0 ? careers[0].id : '',
+    is_active: true
   })
 
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
 
   // Hook de seguridad para el formulario
-  const { processFormData, isProcessing } = useBasicSecurityForm<CareerConfigData>('forms')
+  const { processFormData, isProcessing } = useBasicSecurityForm<CycleFormData>('forms')
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
-              name === 'duration_years' ? parseInt(value) || 1 : value
+              name === 'year' ? parseInt(value) || 1 : value
     }))
     
     // Limpiar error cuando el usuario empiece a escribir
@@ -75,8 +69,8 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
       // Procesar datos con seguridad
       const fieldMappings = {
         name: 'name',
-        description: 'description',
-        duration_years: 'number'
+        year: 'number',
+        career_id: 'code'
       }
 
       const securityResult = await processFormData(formData, fieldMappings)
@@ -103,16 +97,16 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
       // Usar datos sanitizados
       const { sanitizedData } = securityResult
       
-      // Actualizar carrera en Supabase
-      await careerService.update(career.id, sanitizedData)
-      console.log('Carrera actualizada:', sanitizedData)
+      // Crear ciclo en Supabase
+      await cycleService.create(sanitizedData)
+      console.log('Ciclo creado:', sanitizedData)
       
-      toast.success('Carrera actualizada exitosamente')
+      toast.success('Ciclo creado exitosamente')
       onSave()
       onClose()
     } catch (error) {
-      console.error('Error al actualizar carrera:', error)
-      toast.error('Error al actualizar la carrera')
+      console.error('Error al crear ciclo:', error)
+      toast.error('Error al crear el ciclo')
     } finally {
       setLoading(false)
     }
@@ -126,11 +120,11 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <GraduationCap className="h-6 w-6 text-blue-600" />
+                <Calendar className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Configurar Carrera</h2>
-                <p className="text-sm text-gray-500">Modifica la información de la carrera</p>
+                <h2 className="text-2xl font-bold text-gray-900">Nuevo Ciclo</h2>
+                <p className="text-sm text-gray-500">Crea un nuevo ciclo académico</p>
               </div>
             </div>
             <Button variant="outline" onClick={onClose}>
@@ -151,7 +145,7 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre de la Carrera *
+                      Nombre del Ciclo *
                     </label>
                     <input
                       type="text"
@@ -161,7 +155,7 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         errors.name ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Ej: Ingeniería en Sistemas"
+                      placeholder="Ej: Primer Año"
                     />
                     {errors.name && (
                       <p className="text-red-500 text-xs mt-1">{errors.name[0]}</p>
@@ -170,41 +164,46 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descripción
+                      Año del Ciclo *
                     </label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
+                    <select
+                      name="year"
+                      value={formData.year}
                       onChange={handleChange}
-                      rows={3}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.description ? 'border-red-500' : 'border-gray-300'
+                        errors.year ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Describe los objetivos y perfil de la carrera..."
-                    />
-                    {errors.description && (
-                      <p className="text-red-500 text-xs mt-1">{errors.description[0]}</p>
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(year => (
+                        <option key={year} value={year}>{year}° Año</option>
+                      ))}
+                    </select>
+                    {errors.year && (
+                      <p className="text-red-500 text-xs mt-1">{errors.year[0]}</p>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Duración en Años *
+                      Carrera *
                     </label>
                     <select
-                      name="duration_years"
-                      value={formData.duration_years}
+                      name="career_id"
+                      value={formData.career_id}
                       onChange={handleChange}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.duration_years ? 'border-red-500' : 'border-gray-300'
+                        errors.career_id ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(year => (
-                        <option key={year} value={year}>{year} año{year > 1 ? 's' : ''}</option>
+                      <option value="">Selecciona una carrera</option>
+                      {careers.map(career => (
+                        <option key={career.id} value={career.id}>
+                          {career.name}
+                        </option>
                       ))}
                     </select>
-                    {errors.duration_years && (
-                      <p className="text-red-500 text-xs mt-1">{errors.duration_years[0]}</p>
+                    {errors.career_id && (
+                      <p className="text-red-500 text-xs mt-1">{errors.career_id[0]}</p>
                     )}
                   </div>
                 </div>
@@ -222,11 +221,11 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
               <CardContent>
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900">Estado de la Carrera</h4>
+                    <h4 className="text-sm font-medium text-gray-900">Estado del Ciclo</h4>
                     <p className="text-sm text-gray-500">
                       {formData.is_active 
-                        ? 'La carrera está activa y disponible para inscripciones'
-                        : 'La carrera está inactiva y no acepta nuevas inscripciones'
+                        ? 'El ciclo está activo y disponible para asignación de materias'
+                        : 'El ciclo está inactivo y no se puede asignar materias'
                       }
                     </p>
                   </div>
@@ -236,7 +235,7 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
                     className="flex items-center space-x-2"
                   >
                     <span className={`text-sm font-medium ${formData.is_active ? 'text-green-600' : 'text-gray-400'}`}>
-                      {formData.is_active ? 'Activa' : 'Inactiva'}
+                      {formData.is_active ? 'Activo' : 'Inactivo'}
                     </span>
                     <div className={`w-12 h-6 rounded-full transition-colors ${
                       formData.is_active ? 'bg-green-500' : 'bg-gray-300'
@@ -250,34 +249,6 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
               </CardContent>
             </Card>
 
-            {/* Información Adicional */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-green-600" />
-                  Gestión Académica
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <GraduationCap className="h-5 w-5 text-blue-600 mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-medium text-blue-800">Gestión Separada</h4>
-                      <p className="text-sm text-blue-700 mt-1">
-                        Con el nuevo sistema, las materias y ciclos se gestionan de forma independiente:
-                      </p>
-                      <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                        <li>• <strong>Materias:</strong> Ve a la sección "Materias" para crear y gestionar materias</li>
-                        <li>• <strong>Ciclos:</strong> Ve a la sección "Ciclos" para crear años académicos</li>
-                        <li>• <strong>Asignación:</strong> Asigna materias a ciclos desde la gestión de ciclos</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Botones de Acción */}
             <div className="flex justify-end space-x-3 pt-6 border-t">
               <Button type="button" variant="outline" onClick={onClose}>
@@ -287,12 +258,12 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
                 {loading || isProcessing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Guardando...
+                    Creando...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Guardar Cambios
+                    Crear Ciclo
                   </>
                 )}
               </Button>

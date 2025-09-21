@@ -1,5 +1,19 @@
 import { supabase } from './supabase'
 
+export interface User {
+  id?: string
+  auth_user_id?: string
+  institution_id: string
+  email: string
+  role: 'admin' | 'professor' | 'student'
+  first_name: string
+  last_name: string
+  phone?: string
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Student {
   id?: string
   institution_id: string
@@ -55,13 +69,28 @@ export interface Cycle {
 
 export interface Subject {
   id?: string
-  cycle_id: string
+  institution_id: string
   name: string
   code: string
   description?: string
   credits: number
   hours_per_week?: number
   is_active: boolean
+}
+
+export interface CycleSubject {
+  id?: string
+  cycle_id: string
+  subject_id: string
+  is_required: boolean
+  semester?: number
+  order_in_cycle?: number
+}
+
+export interface SubjectPrerequisite {
+  id?: string
+  subject_id: string
+  prerequisite_subject_id: string
 }
 
 export interface Enrollment {
@@ -393,29 +422,24 @@ export const cycleService = {
 }
 
 // Servicios para materias
+// Servicios para materias (Flujo 2 - independientes)
 export const subjectService = {
-  async getAll(cycleId?: string) {
-    let query = supabase.from('subjects').select(`
-      *,
-      cycles(name, year, careers(name))
-    `)
+  async getAll(institutionId?: string) {
+    let query = supabase.from('subjects_new').select('*')
     
-    if (cycleId) {
-      query = query.eq('cycle_id', cycleId)
+    if (institutionId) {
+      query = query.eq('institution_id', institutionId)
     }
     
-    const { data, error } = await query
+    const { data, error } = await query.order('name')
     if (error) throw error
     return data || []
   },
 
   async getById(id: string) {
     const { data, error } = await supabase
-      .from('subjects')
-      .select(`
-        *,
-        cycles(name, year, careers(name))
-      `)
+      .from('subjects_new')
+      .select('*')
       .eq('id', id)
       .single()
     
@@ -425,7 +449,7 @@ export const subjectService = {
 
   async create(subject: Omit<Subject, 'id'>) {
     const { data, error } = await supabase
-      .from('subjects')
+      .from('subjects_new')
       .insert([subject])
       .select()
     
@@ -435,7 +459,7 @@ export const subjectService = {
 
   async update(id: string, updates: Partial<Subject>) {
     const { data, error } = await supabase
-      .from('subjects')
+      .from('subjects_new')
       .update(updates)
       .eq('id', id)
       .select()
@@ -446,7 +470,153 @@ export const subjectService = {
 
   async delete(id: string) {
     const { error } = await supabase
-      .from('subjects')
+      .from('subjects_new')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+  },
+
+  // Obtener materias asignadas a un ciclo específico
+  async getByCycle(cycleId: string) {
+    const { data, error } = await supabase
+      .from('cycle_subjects')
+      .select(`
+        *,
+        subjects_new(*)
+      `)
+      .eq('cycle_id', cycleId)
+      .order('semester')
+      .order('order_in_cycle')
+    
+    if (error) throw error
+    return data || []
+  },
+
+  // Obtener ciclos donde está asignada una materia
+  async getCyclesBySubject(subjectId: string) {
+    const { data, error } = await supabase
+      .from('cycle_subjects')
+      .select(`
+        *,
+        cycles(name, year, careers(name))
+      `)
+      .eq('subject_id', subjectId)
+    
+    if (error) throw error
+    return data || []
+  }
+}
+
+// Servicios para asignación de materias a ciclos
+export const cycleSubjectService = {
+  async assign(assignment: Omit<CycleSubject, 'id'>) {
+    const { data, error } = await supabase
+      .from('cycle_subjects')
+      .insert([assignment])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async unassign(cycleId: string, subjectId: string) {
+    const { error } = await supabase
+      .from('cycle_subjects')
+      .delete()
+      .eq('cycle_id', cycleId)
+      .eq('subject_id', subjectId)
+    
+    if (error) throw error
+  },
+
+  async updateAssignment(cycleId: string, subjectId: string, updates: Partial<CycleSubject>) {
+    const { data, error } = await supabase
+      .from('cycle_subjects')
+      .update(updates)
+      .eq('cycle_id', cycleId)
+      .eq('subject_id', subjectId)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async getAssignmentsByCycle(cycleId: string) {
+    const { data, error } = await supabase
+      .from('cycle_subjects')
+      .select(`
+        *,
+        subjects_new(*)
+      `)
+      .eq('cycle_id', cycleId)
+      .order('semester')
+      .order('order_in_cycle')
+    
+    if (error) throw error
+    return data || []
+  }
+}
+
+// Servicio para obtener el usuario actual
+export const userService = {
+  async getCurrentUser() {
+    const { data, error } = await supabase.rpc('get_current_user')
+    if (error) throw error
+    return data?.[0] || null
+  },
+
+  async getUserInstitution() {
+    const { data, error } = await supabase.rpc('get_user_institution')
+    if (error) throw error
+    return data
+  },
+
+  async isAdminOfInstitution(institutionId: string) {
+    const { data, error } = await supabase.rpc('is_admin_of_institution', { p_institution_id: institutionId })
+    if (error) throw error
+    return data
+  },
+
+  async getAll(institutionId?: string) {
+    let query = supabase.from('users').select(`
+      *,
+      institutions(name)
+    `)
+    
+    if (institutionId) {
+      query = query.eq('institution_id', institutionId)
+    }
+    
+    const { data, error } = await query.order('first_name')
+    if (error) throw error
+    return data || []
+  },
+
+  async create(user: Omit<User, 'id'>) {
+    const { data, error } = await supabase
+      .from('users')
+      .insert([user])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async update(id: string, updates: Partial<User>) {
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('users')
       .delete()
       .eq('id', id)
     
