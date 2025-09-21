@@ -62,3 +62,4 @@ async function createProfessorsTable() {
 
 createProfessorsTable();
 
+

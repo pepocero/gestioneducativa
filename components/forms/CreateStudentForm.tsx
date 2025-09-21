@@ -26,9 +26,6 @@ interface StudentFormData {
   address: string
   birthDate: string
   dni: string
-  careerId: string
-  year: string
-  enrollmentDate: string
   emergencyContact: string
   emergencyPhone: string
   notes: string
@@ -48,9 +45,6 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
     address: '',
     birthDate: '',
     dni: '',
-    careerId: '',
-    year: '',
-    enrollmentDate: new Date().toISOString().split('T')[0],
     emergencyContact: '',
     emergencyPhone: '',
     notes: ''
@@ -58,21 +52,6 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
 
   const [errors, setErrors] = useState<Partial<StudentFormData>>({})
   const [loading, setLoading] = useState(false)
-  const [careers, setCareers] = useState<any[]>([])
-
-  // Cargar carreras al montar el componente
-  useEffect(() => {
-    const loadCareers = async () => {
-      try {
-        const careersData = await careerService.getAll()
-        setCareers(careersData)
-      } catch (error) {
-        console.error('Error cargando carreras:', error)
-        toast.error('Error cargando carreras')
-      }
-    }
-    loadCareers()
-  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -100,8 +79,6 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
     if (!formData.phone.trim()) newErrors.phone = 'El teléfono es requerido'
     if (!formData.dni.trim()) newErrors.dni = 'El DNI es requerido'
     if (!formData.birthDate) newErrors.birthDate = 'La fecha de nacimiento es requerida'
-    if (!formData.careerId) newErrors.careerId = 'La carrera es requerida'
-    if (!formData.year) newErrors.year = 'El año es requerido'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -116,12 +93,23 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
 
     setLoading(true)
     try {
-      // Crear estudiante en Supabase
-      const studentData = {
+      // Crear usuario primero
+      const userData = {
         institution_id: '7de7ceb2-fe97-4d1a-8479-0b90e0144e7d', // ID de la institución por defecto
-        career_id: formData.careerId,
+        email: formData.email,
+        role: 'student',
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        phone: formData.phone
+      }
+
+      // Crear estudiante sin carrera asignada
+      const studentData = {
+        user_id: '', // Se asignará después de crear el usuario
+        institution_id: '7de7ceb2-fe97-4d1a-8479-0b90e0144e7d',
+        career_id: null, // Sin carrera asignada inicialmente
         student_number: `2024${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        enrollment_date: formData.enrollmentDate,
+        enrollment_date: new Date().toISOString().split('T')[0],
         is_active: true,
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -129,13 +117,16 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
         phone: formData.phone,
         dni: formData.dni,
         birth_date: formData.birthDate,
-        address: formData.address
+        address: formData.address,
+        emergency_contact: formData.emergencyContact,
+        emergency_phone: formData.emergencyPhone,
+        notes: formData.notes
       }
 
       const newStudent = await studentService.create(studentData)
       console.log('Estudiante creado:', newStudent)
       
-      toast.success('Estudiante creado exitosamente')
+      toast.success('Estudiante creado exitosamente. Podrás asignarle una carrera más tarde.')
       onSave(formData)
       onClose()
     } catch (error) {
@@ -158,7 +149,7 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Nuevo Estudiante</h2>
-                <p className="text-sm text-gray-500">Completa la información del estudiante</p>
+                <p className="text-sm text-gray-500">Completa la información personal del estudiante</p>
               </div>
             </div>
             <Button variant="outline" onClick={onClose}>
@@ -320,79 +311,6 @@ export default function CreateStudentForm({ onClose, onSave }: CreateStudentForm
               </CardContent>
             </Card>
 
-            {/* Información Académica */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <GraduationCap className="h-5 w-5 mr-2 text-purple-600" />
-                  Información Académica
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Carrera *
-                    </label>
-                    <select
-                      name="careerId"
-                      value={formData.careerId}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.careerId ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Selecciona una carrera</option>
-                      {careers.map((career) => (
-                        <option key={career.id} value={career.id}>
-                          {career.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.careerId && (
-                      <p className="text-red-500 text-xs mt-1">{errors.careerId}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Año *
-                    </label>
-                    <select
-                      name="year"
-                      value={formData.year}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.year ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Selecciona el año</option>
-                      <option value="1">1er Año</option>
-                      <option value="2">2do Año</option>
-                      <option value="3">3er Año</option>
-                      <option value="4">4to Año</option>
-                      <option value="5">5to Año</option>
-                    </select>
-                    {errors.year && (
-                      <p className="text-red-500 text-xs mt-1">{errors.year}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha de Inscripción
-                    </label>
-                    <input
-                      type="date"
-                      name="enrollmentDate"
-                      value={formData.enrollmentDate}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Contacto de Emergencia */}
             <Card>

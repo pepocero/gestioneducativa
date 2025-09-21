@@ -291,7 +291,48 @@ export const careerService = {
     
     const { data, error } = await query
     if (error) throw error
+    return data || []
+  },
+
+  async getById(id: string) {
+    const { data, error } = await supabase
+      .from('careers')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
     return data
+  },
+
+  async create(career: Omit<Career, 'id'>) {
+    const { data, error } = await supabase
+      .from('careers')
+      .insert([career])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async update(id: string, updates: Partial<Career>) {
+    const { data, error } = await supabase
+      .from('careers')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('careers')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
   }
 }
 
@@ -306,7 +347,48 @@ export const cycleService = {
     
     const { data, error } = await query
     if (error) throw error
+    return data || []
+  },
+
+  async getById(id: string) {
+    const { data, error } = await supabase
+      .from('cycles')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
     return data
+  },
+
+  async create(cycle: Omit<Cycle, 'id'>) {
+    const { data, error } = await supabase
+      .from('cycles')
+      .insert([cycle])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async update(id: string, updates: Partial<Cycle>) {
+    const { data, error } = await supabase
+      .from('cycles')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('cycles')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
   }
 }
 
@@ -324,7 +406,51 @@ export const subjectService = {
     
     const { data, error } = await query
     if (error) throw error
+    return data || []
+  },
+
+  async getById(id: string) {
+    const { data, error } = await supabase
+      .from('subjects')
+      .select(`
+        *,
+        cycles(name, year, careers(name))
+      `)
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
     return data
+  },
+
+  async create(subject: Omit<Subject, 'id'>) {
+    const { data, error } = await supabase
+      .from('subjects')
+      .insert([subject])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async update(id: string, updates: Partial<Subject>) {
+    const { data, error } = await supabase
+      .from('subjects')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('subjects')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
   }
 }
 

@@ -40,3 +40,4 @@ console.log('• Cada institución mostrará sus propios datos únicos');
 console.log('\n✨ ¡PROBLEMA SOLUCIONADO!');
 console.log('Ahora cada institución tendrá sus propios datos únicos.');
 
+

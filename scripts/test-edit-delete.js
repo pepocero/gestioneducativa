@@ -36,3 +36,4 @@ console.log('   5. Confirma la eliminación');
 
 console.log('\n✨ ¡BOTONES DE EDICIÓN Y ELIMINACIÓN COMPLETAMENTE FUNCIONALES!');
 
+

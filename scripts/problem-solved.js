@@ -41,3 +41,4 @@ console.log('   • ✅ Manejo de errores cuando no existe la institución');
 console.log('\n✨ ¡PROBLEMA COMPLETAMENTE SOLUCIONADO!');
 console.log('Ahora cada institución tiene sus propios datos únicos.');
 
+
