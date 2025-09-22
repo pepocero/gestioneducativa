@@ -237,21 +237,21 @@ export default function CyclesPage() {
                   ))}
                 </select>
                 <Button
-                  variant={filterActive === 'all' ? 'default' : 'outline'}
+                  variant={filterActive === 'all' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('all')}
                 >
                   Todos
                 </Button>
                 <Button
-                  variant={filterActive === 'active' ? 'default' : 'outline'}
+                  variant={filterActive === 'active' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('active')}
                 >
                   Activos
                 </Button>
                 <Button
-                  variant={filterActive === 'inactive' ? 'default' : 'outline'}
+                  variant={filterActive === 'inactive' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('inactive')}
                 >
@@ -300,7 +300,10 @@ export default function CyclesPage() {
               </CardContent>
             </Card>
           ) : (
-            Object.values(cyclesByCareer).map(({ career, cycles: careerCycles }) => (
+            Object.entries(cyclesByCareer).map(([careerId, data]) => {
+              const career = (data as any).career
+              const careerCycles = (data as any).cycles
+              return (
               <Card key={career.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -327,8 +330,8 @@ export default function CyclesPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {careerCycles
-                      .sort((a, b) => a.year - b.year)
-                      .map((cycle, index) => (
+                      .sort((a: any, b: any) => a.year - b.year)
+                      .map((cycle: any, index: number) => (
                       <div key={cycle.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
@@ -387,7 +390,8 @@ export default function CyclesPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              )
+            })
           )}
         </div>
 

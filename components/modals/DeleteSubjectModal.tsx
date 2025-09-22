@@ -137,7 +137,7 @@ export default function DeleteSubjectModal({ subject, onClose, onConfirm }: Dele
               Cancelar
             </Button>
             <Button 
-              variant="destructive" 
+              variant="danger" 
               onClick={handleDelete}
               disabled={loading || confirmText !== subject.name}
             >

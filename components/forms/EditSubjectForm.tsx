@@ -92,7 +92,8 @@ export default function EditSubjectForm({ subject, careers, onClose, onSave }: E
         description: 'description',
         credits: 'number',
         hours_per_week: 'number',
-        career_id: 'uuid'
+        career_id: 'uuid',
+        is_active: 'boolean'
       }
 
       const securityResult = await processFormData(formData, fieldMappings)

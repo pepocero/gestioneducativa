@@ -207,21 +207,21 @@ export default function SubjectsPage() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant={filterActive === 'all' ? 'default' : 'outline'}
+                  variant={filterActive === 'all' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('all')}
                 >
                   Todas
                 </Button>
                 <Button
-                  variant={filterActive === 'active' ? 'default' : 'outline'}
+                  variant={filterActive === 'active' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('active')}
                 >
                   Activas
                 </Button>
                 <Button
-                  variant={filterActive === 'inactive' ? 'default' : 'outline'}
+                  variant={filterActive === 'inactive' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('inactive')}
                 >

@@ -24,6 +24,9 @@ interface ProfessorFormData {
   lastName: string
   email: string
   phone: string
+  dni: string
+  birthDate: string
+  address: string
   specialization: string
   degree: string
   experience: string
@@ -45,6 +48,9 @@ export default function CreateProfessorForm({ onClose, onSave }: CreateProfessor
     lastName: '',
     email: '',
     phone: '',
+    dni: '',
+    birthDate: '',
+    address: '',
     specialization: '',
     degree: '',
     experience: '',

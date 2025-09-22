@@ -76,7 +76,8 @@ export default function CareerConfigModal({ career, onClose, onSave }: CareerCon
       const fieldMappings = {
         name: 'name',
         description: 'description',
-        duration_years: 'number'
+        duration_years: 'number',
+        is_active: 'boolean'
       }
 
       const securityResult = await processFormData(formData, fieldMappings)

@@ -108,7 +108,7 @@ export default function DeleteInstitutionModal({ institution, onClose, onDelete 
               Cancelar
             </Button>
             <Button 
-              variant="destructive" 
+              variant="danger" 
               onClick={handleDelete}
               disabled={loading}
             >

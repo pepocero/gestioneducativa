@@ -44,7 +44,7 @@ export default function DashboardPage() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('institution_id')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       if (userError || !userData?.institution_id) {
@@ -69,7 +69,7 @@ export default function DashboardPage() {
           .select('id', { count: 'exact' })
           .eq('institution_id', userData.institution_id),
         supabase
-          .from('subjects')
+          .from('subjects_new')
           .select('id', { count: 'exact' })
           .eq('institution_id', userData.institution_id)
       ])

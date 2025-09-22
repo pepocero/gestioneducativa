@@ -24,6 +24,12 @@ interface CareerFormData {
   is_active: boolean
 }
 
+interface CareerFormErrors {
+  name?: string
+  description?: string
+  duration_years?: string
+}
+
 interface EditCareerFormProps {
   career: {
     id: string
@@ -44,7 +50,7 @@ export default function EditCareerForm({ career, onClose, onSave }: EditCareerFo
     is_active: career.is_active
   })
 
-  const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const [errors, setErrors] = useState<CareerFormErrors>({})
   const [loading, setLoading] = useState(false)
 
   // Hook de seguridad para el formulario
@@ -60,16 +66,16 @@ export default function EditCareerForm({ career, onClose, onSave }: EditCareerFo
     }))
     
     // Limpiar error cuando el usuario empiece a escribir
-    if (errors[name]) {
+    if (errors[name as keyof CareerFormErrors]) {
       setErrors(prev => ({
         ...prev,
-        [name]: []
+        [name]: undefined
       }))
     }
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<CareerFormData> = {}
+    const newErrors: CareerFormErrors = {}
 
     if (!formData.name.trim()) newErrors.name = 'El nombre de la carrera es requerido'
     if (!formData.description.trim()) newErrors.description = 'La descripción es requerida'
@@ -91,7 +97,8 @@ export default function EditCareerForm({ career, onClose, onSave }: EditCareerFo
       const fieldMappings = {
         name: 'name',
         description: 'description',
-        duration_years: 'number'
+        duration_years: 'number',
+        is_active: 'boolean'
       }
 
       const securityResult = await processFormData(formData, fieldMappings)

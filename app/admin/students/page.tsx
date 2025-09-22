@@ -5,8 +5,11 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import CreateStudentForm from '@/components/forms/CreateStudentForm'
+import EditStudentForm from '@/components/forms/EditStudentForm'
+import DeleteStudentModal from '@/components/modals/DeleteStudentModal'
 import EnrollStudentForm from '@/components/forms/EnrollStudentForm'
-import { studentService } from '@/lib/supabase-service'
+import { studentService, careerService } from '@/lib/supabase-service'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { toast } from 'react-hot-toast'
 import { 
   Plus, 
@@ -23,22 +26,34 @@ import {
 } from 'lucide-react'
 
 export default function StudentsPage() {
+  const { institutionId, loading: userLoading } = useCurrentUser()
   const [students, setStudents] = useState<any[]>([])
+  const [careers, setCareers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEnrollForm, setShowEnrollForm] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<any>(null)
 
   // Cargar estudiantes al montar el componente
   useEffect(() => {
-    loadStudents()
-  }, [])
+    if (institutionId && !userLoading) {
+      loadStudents()
+    }
+  }, [institutionId, userLoading])
 
   const loadStudents = async () => {
+    if (!institutionId) return
+    
     try {
       setLoading(true)
-      const studentsData = await studentService.getAll()
+      const [studentsData, careersData] = await Promise.all([
+        studentService.getAll(institutionId),
+        careerService.getAll(institutionId)
+      ])
       setStudents(studentsData)
+      setCareers(careersData)
     } catch (error) {
       console.error('Error cargando estudiantes:', error)
       toast.error('Error cargando estudiantes')
@@ -50,6 +65,28 @@ export default function StudentsPage() {
   const handleCreateStudent = () => {
     loadStudents()
     setShowCreateForm(false)
+  }
+
+  const handleEditStudent = (student: any) => {
+    setSelectedStudent(student)
+    setShowEditForm(true)
+  }
+
+  const handleStudentUpdated = () => {
+    loadStudents()
+    setShowEditForm(false)
+    setSelectedStudent(null)
+  }
+
+  const handleDeleteStudent = (student: any) => {
+    setSelectedStudent(student)
+    setShowDeleteModal(true)
+  }
+
+  const handleStudentDeleted = () => {
+    loadStudents()
+    setShowDeleteModal(false)
+    setSelectedStudent(null)
   }
 
   const handleEnrollStudent = (student: any) => {
@@ -170,7 +207,12 @@ export default function StudentsPage() {
             <h3 className="text-lg font-medium text-gray-900">Lista de Estudiantes</h3>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {userLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-500">Cargando información del usuario...</p>
+              </div>
+            ) : loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="mt-2 text-gray-500">Cargando estudiantes...</p>
@@ -236,10 +278,18 @@ export default function StudentsPage() {
                             Inscribir
                           </Button>
                         )}
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditStudent(student)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDeleteStudent(student)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -267,6 +317,29 @@ export default function StudentsPage() {
               setSelectedStudent(null)
             }}
             onSave={handleEnrollComplete}
+          />
+        )}
+
+        {showEditForm && selectedStudent && (
+          <EditStudentForm
+            student={selectedStudent}
+            careers={careers}
+            onClose={() => {
+              setShowEditForm(false)
+              setSelectedStudent(null)
+            }}
+            onSave={handleStudentUpdated}
+          />
+        )}
+
+        {showDeleteModal && selectedStudent && (
+          <DeleteStudentModal
+            student={selectedStudent}
+            onClose={() => {
+              setShowDeleteModal(false)
+              setSelectedStudent(null)
+            }}
+            onConfirm={handleStudentDeleted}
           />
         )}
       </div>

@@ -83,7 +83,8 @@ export default function CreateSubjectForm({ careers, onClose, onSave }: CreateSu
         description: 'description',
         credits: 'number',
         hours_per_week: 'number',
-        career_id: 'uuid'
+        career_id: 'uuid',
+        is_active: 'boolean'
       }
 
       const securityResult = await processFormData(formData, fieldMappings)
@@ -260,7 +261,7 @@ export default function CreateSubjectForm({ careers, onClose, onSave }: CreateSu
                       <p className="text-red-500 text-xs mt-1">{errors.career_id[0]}</p>
                     )}
                   </div>
-                </div>
+                  </div>
               </CardContent>
             </Card>
 
@@ -293,24 +294,24 @@ export default function CreateSubjectForm({ careers, onClose, onSave }: CreateSu
                       <p className="text-red-500 text-xs mt-1">{errors.credits[0]}</p>
                     )}
                     <p className="text-xs text-gray-500 mt-1">Número de créditos académicos</p>
-                  </div>
+                </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Horas por Semana *
-                    </label>
-                    <input
-                      type="number"
-                      name="hours_per_week"
-                      value={formData.hours_per_week}
-                      onChange={handleChange}
-                      min="1"
-                      max="20"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.hours_per_week ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.hours_per_week && (
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Horas por Semana *
+                  </label>
+                  <input
+                    type="number"
+                    name="hours_per_week"
+                    value={formData.hours_per_week}
+                    onChange={handleChange}
+                    min="1"
+                    max="20"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.hours_per_week ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors.hours_per_week && (
                       <p className="text-red-500 text-xs mt-1">{errors.hours_per_week[0]}</p>
                     )}
                     <p className="text-xs text-gray-500 mt-1">Horas de clase por semana</p>

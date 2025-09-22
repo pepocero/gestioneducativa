@@ -70,7 +70,8 @@ export default function CreateCycleForm({ careers, onClose, onSave }: CreateCycl
       const fieldMappings = {
         name: 'name',
         year: 'number',
-        career_id: 'code'
+        career_id: 'uuid',
+        is_active: 'boolean'
       }
 
       const securityResult = await processFormData(formData, fieldMappings)

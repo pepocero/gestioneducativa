@@ -125,20 +125,20 @@ export function useSecurityForm<T extends Record<string, any>>(
       let warnings: Record<string, string[]> = {}
 
       if (enableSanitization) {
-        const fieldConfig: Record<keyof T, SanitizationOptions> = {}
+        const fieldConfig: Record<string, SanitizationOptions> = {}
         
         // Configurar opciones de sanitización para cada campo
         for (const [fieldName, fieldType] of Object.entries(fieldMappings)) {
           const customConfig = customFieldConfigs[fieldName]
           const defaultConfig = FIELD_CONFIGS[fieldType as keyof typeof FIELD_CONFIGS]
           
-          fieldConfig[fieldName as keyof T] = {
+          fieldConfig[fieldName] = {
             ...defaultConfig,
             ...customConfig
           }
         }
 
-        const sanitizationResult = sanitizeObject(formData, fieldConfig)
+        const sanitizationResult = sanitizeObject(formData, fieldConfig as Record<keyof T, SanitizationOptions>)
         sanitizedData = sanitizationResult.sanitizedData
         errors = sanitizationResult.errors
         warnings = sanitizationResult.warnings
@@ -327,9 +327,9 @@ async function performAdditionalValidations<T>(
   switch (formType) {
     case 'login':
       // Validaciones específicas para login
-      if ('email' in formData && 'password' in formData) {
-        const email = String(formData.email)
-        const password = String(formData.password)
+      if ('email' in (formData as object) && 'password' in (formData as object)) {
+        const email = String((formData as any).email)
+        const password = String((formData as any).password)
 
         if (password.length < 6) {
           errors.password = ['La contraseña debe tener al menos 6 caracteres']
@@ -343,9 +343,9 @@ async function performAdditionalValidations<T>(
 
     case 'register':
       // Validaciones específicas para registro
-      if ('password' in formData && 'confirmPassword' in formData) {
-        const password = String(formData.password)
-        const confirmPassword = String(formData.confirmPassword)
+      if ('password' in (formData as object) && 'confirmPassword' in (formData as object)) {
+        const password = String((formData as any).password)
+        const confirmPassword = String((formData as any).confirmPassword)
 
         if (password !== confirmPassword) {
           errors.confirmPassword = ['Las contraseñas no coinciden']
@@ -359,7 +359,7 @@ async function performAdditionalValidations<T>(
 
     case 'forms':
       // Validaciones generales para formularios
-      for (const [key, value] of Object.entries(formData)) {
+      for (const [key, value] of Object.entries(formData as any)) {
         if (typeof value === 'string' && value.length > 1000) {
           errors[key] = ['El campo es demasiado largo']
         }

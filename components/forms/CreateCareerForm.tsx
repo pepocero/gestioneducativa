@@ -21,6 +21,12 @@ interface CareerFormData {
   duration_years: number
 }
 
+interface CareerFormErrors {
+  name?: string
+  description?: string
+  duration_years?: string
+}
+
 interface CreateCareerFormProps {
   onClose: () => void
   onSave: () => void
@@ -33,7 +39,7 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
     duration_years: 4
   })
 
-  const [errors, setErrors] = useState<Partial<CareerFormData>>({})
+  const [errors, setErrors] = useState<CareerFormErrors>({})
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -53,7 +59,7 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<CareerFormData> = {}
+    const newErrors: CareerFormErrors = {}
 
     if (!formData.name.trim()) newErrors.name = 'El nombre de la carrera es requerido'
     if (!formData.description.trim()) newErrors.description = 'La descripción es requerida'

@@ -125,15 +125,15 @@ export function useSubjects(cycleId?: string) {
     try {
       setLoading(true)
       let query = supabase
-        .from('subjects')
+        .from('subjects_new')
         .select(`
           *,
-          cycles(name, year, careers(name, institutions(name)))
+          careers(name, institutions(name))
         `)
         .order('code', { ascending: true })
 
       if (cycleId) {
-        query = query.eq('cycle_id', cycleId)
+        query = query.eq('career_id', cycleId)
       }
 
       const { data, error } = await query
@@ -151,11 +151,11 @@ export function useSubjects(cycleId?: string) {
   const createSubject = async (subjectData: any) => {
     try {
       const { data, error } = await supabase
-        .from('subjects')
+        .from('subjects_new')
         .insert([subjectData])
         .select(`
           *,
-          cycles(name, year, careers(name, institutions(name)))
+          careers(name, institutions(name))
         `)
         .single()
 
@@ -173,12 +173,12 @@ export function useSubjects(cycleId?: string) {
   const updateSubject = async (id: string, updates: any) => {
     try {
       const { data, error } = await supabase
-        .from('subjects')
+        .from('subjects_new')
         .update(updates)
         .eq('id', id)
         .select(`
           *,
-          cycles(name, year, careers(name, institutions(name)))
+          careers(name, institutions(name))
         `)
         .single()
 
@@ -199,7 +199,7 @@ export function useSubjects(cycleId?: string) {
   const deleteSubject = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('subjects')
+        .from('subjects_new')
         .delete()
         .eq('id', id)
 
@@ -250,7 +250,7 @@ export function useStudents() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('institution_id')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       if (userError || !userData?.institution_id) {
@@ -290,7 +290,7 @@ export function useStudents() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('institution_id')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       if (userError || !userData?.institution_id) {
@@ -334,7 +334,7 @@ export function useStudents() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('institution_id')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       if (userError || !userData?.institution_id) {
@@ -377,7 +377,7 @@ export function useStudents() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('institution_id')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       if (userError || !userData?.institution_id) {

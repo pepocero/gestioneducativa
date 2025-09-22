@@ -16,6 +16,7 @@ export interface User {
 
 export interface Student {
   id?: string
+  user_id?: string
   institution_id: string
   career_id?: string
   student_number: string
@@ -28,6 +29,38 @@ export interface Student {
   dni?: string
   birth_date?: string
   address?: string
+  emergency_contact?: string
+  emergency_phone?: string
+  notes?: string
+}
+
+export interface CareerEnrollment {
+  id?: string
+  student_id: string
+  career_id: string
+  enrollment_date: string
+  status: 'active' | 'inactive' | 'graduated' | 'dropped'
+  academic_year: string
+  semester: string
+  notes?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SubjectEnrollment {
+  id?: string
+  student_id: string
+  subject_id: string
+  career_enrollment_id: string
+  enrollment_date: string
+  status: 'enrolled' | 'completed' | 'failed' | 'dropped' | 'incomplete'
+  academic_year: string
+  semester: string
+  final_grade?: number
+  attendance_percentage?: number
+  notes?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Professor {
@@ -624,11 +657,11 @@ export const userService = {
   }
 }
 
-// Servicios para inscripciones
-export const enrollmentService = {
-  async create(enrollment: Omit<Enrollment, 'id'>) {
+// Servicios para inscripciones a carreras
+export const careerEnrollmentService = {
+  async create(enrollment: Omit<CareerEnrollment, 'id'>) {
     const { data, error } = await supabase
-      .from('enrollments')
+      .from('career_enrollments')
       .insert([enrollment])
       .select()
     
@@ -638,11 +671,73 @@ export const enrollmentService = {
 
   async getByStudent(studentId: string) {
     const { data, error } = await supabase
-      .from('enrollments')
+      .from('career_enrollments')
       .select(`
         *,
-        subjects(name, code, credits),
+        careers(name, description),
         students(first_name, last_name, student_number)
+      `)
+      .eq('student_id', studentId)
+    
+    if (error) throw error
+    return data
+  },
+
+  async getByCareer(careerId: string) {
+    const { data, error } = await supabase
+      .from('career_enrollments')
+      .select(`
+        *,
+        careers(name, description),
+        students(first_name, last_name, student_number)
+      `)
+      .eq('career_id', careerId)
+    
+    if (error) throw error
+    return data
+  },
+
+  async update(id: string, updates: Partial<CareerEnrollment>) {
+    const { data, error } = await supabase
+      .from('career_enrollments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('career_enrollments')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+  }
+}
+
+// Servicios para inscripciones a materias
+export const subjectEnrollmentService = {
+  async create(enrollment: Omit<SubjectEnrollment, 'id'>) {
+    const { data, error } = await supabase
+      .from('subject_enrollments')
+      .insert([enrollment])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async getByStudent(studentId: string) {
+    const { data, error } = await supabase
+      .from('subject_enrollments')
+      .select(`
+        *,
+        subjects_new(name, code, credits),
+        students(first_name, last_name, student_number),
+        career_enrollments(careers(name))
       `)
       .eq('student_id', studentId)
     
@@ -652,16 +747,51 @@ export const enrollmentService = {
 
   async getBySubject(subjectId: string) {
     const { data, error } = await supabase
-      .from('enrollments')
+      .from('subject_enrollments')
       .select(`
         *,
-        subjects(name, code),
-        students(first_name, last_name, student_number)
+        subjects_new(name, code),
+        students(first_name, last_name, student_number),
+        career_enrollments(careers(name))
       `)
       .eq('subject_id', subjectId)
     
     if (error) throw error
     return data
+  },
+
+  async getByCareerEnrollment(careerEnrollmentId: string) {
+    const { data, error } = await supabase
+      .from('subject_enrollments')
+      .select(`
+        *,
+        subjects_new(name, code, credits),
+        students(first_name, last_name, student_number)
+      `)
+      .eq('career_enrollment_id', careerEnrollmentId)
+    
+    if (error) throw error
+    return data
+  },
+
+  async update(id: string, updates: Partial<SubjectEnrollment>) {
+    const { data, error } = await supabase
+      .from('subject_enrollments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('subject_enrollments')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
   }
 }
 

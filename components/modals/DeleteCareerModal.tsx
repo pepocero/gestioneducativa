@@ -129,7 +129,7 @@ export default function DeleteCareerModal({ career, onClose, onConfirm }: Delete
               Cancelar
             </Button>
             <Button 
-              variant="destructive" 
+              variant="danger" 
               onClick={handleDelete}
               disabled={loading || confirmText !== career.name}
             >

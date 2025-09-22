@@ -203,7 +203,7 @@ export function sanitizeNumber(input: string | number, min?: number, max?: numbe
     if (isNaN(parsed)) {
       return {
         isValid: false,
-        sanitizedValue: 0,
+        sanitizedValue: '0',
         errors: ['El valor debe ser un número válido'],
         warnings: []
       }
@@ -212,18 +212,18 @@ export function sanitizeNumber(input: string | number, min?: number, max?: numbe
   }
 
   // Validar rango mínimo
-  if (min !== undefined && sanitizedValue < min) {
+  if (min !== undefined && typeof sanitizedValue === 'number' && sanitizedValue < min) {
     errors.push(`El valor debe ser mayor o igual a ${min}`)
   }
 
   // Validar rango máximo
-  if (max !== undefined && sanitizedValue > max) {
+  if (max !== undefined && typeof sanitizedValue === 'number' && sanitizedValue > max) {
     errors.push(`El valor debe ser menor o igual a ${max}`)
   }
 
   return {
     isValid: errors.length === 0,
-    sanitizedValue,
+    sanitizedValue: String(sanitizedValue),
     errors,
     warnings
   }

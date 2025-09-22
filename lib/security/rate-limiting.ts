@@ -211,8 +211,9 @@ class RateLimiter {
   private cleanup(): void {
     const now = Date.now()
     const maxAge = 24 * 60 * 60 * 1000 // 24 horas
+    const entries = Array.from(this.attempts.entries())
 
-    for (const [key, entry] of this.attempts.entries()) {
+    for (const [key, entry] of entries) {
       // Eliminar entradas muy antiguas
       if (now - entry.lastAttempt > maxAge) {
         this.attempts.delete(key)
@@ -237,8 +238,9 @@ class RateLimiter {
   getStats(): { totalEntries: number; blockedEntries: number } {
     const now = Date.now()
     let blockedEntries = 0
+    const values = Array.from(this.attempts.values())
 
-    for (const entry of this.attempts.values()) {
+    for (const entry of values) {
       if (entry.blockedUntil && now < entry.blockedUntil) {
         blockedEntries++
       }

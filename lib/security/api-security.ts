@@ -127,8 +127,9 @@ export function createSecurityMiddleware(config: SecurityMiddlewareConfig = {}) 
       if (enableSanitization) {
         const urlObj = new URL(url)
         const searchParams = urlObj.searchParams
+        const entries = Array.from(searchParams.entries())
         
-        for (const [key, value] of searchParams.entries()) {
+        for (const [key, value] of entries) {
           const sanitized = sanitizeString(value, { maxLength: 1000 })
           if (!sanitized.isValid) {
             if (enableLogging) {

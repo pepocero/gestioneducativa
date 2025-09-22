@@ -126,7 +126,7 @@ export default function DeleteCycleModal({ cycle, onClose, onConfirm }: DeleteCy
               Cancelar
             </Button>
             <Button 
-              variant="destructive" 
+              variant="danger" 
               onClick={handleDelete}
               disabled={loading || confirmText !== cycle.name}
             >
