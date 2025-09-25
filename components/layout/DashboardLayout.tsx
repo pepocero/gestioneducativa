@@ -20,7 +20,8 @@ import {
   LogOut,
   Menu,
   X,
-  Calendar
+  Calendar,
+  ClipboardList
 } from 'lucide-react'
 
 interface UserProfile {
@@ -107,6 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: 'Materias', href: '/admin/subjects', icon: BookOpen, roles: ['admin'] },
         { name: 'Ciclos', href: '/admin/cycles', icon: Calendar, roles: ['admin'] },
         { name: 'Estudiantes', href: '/admin/students', icon: UserCheck, roles: ['admin'] },
+        { name: 'Inscripciones', href: '/admin/enrollments', icon: ClipboardList, roles: ['admin'] },
       ]
     }
 

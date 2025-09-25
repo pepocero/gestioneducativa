@@ -818,3 +818,149 @@ export const gradeService = {
   }
 }
 
+// Interfaces para solicitudes de inscripción
+export interface EnrollmentRequest {
+  id?: string
+  student_id: string
+  subject_id: string
+  career_id: string
+  cycle_id: string
+  academic_year: string
+  semester: number
+  status?: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  request_date?: string
+  reviewed_by?: string
+  reviewed_at?: string
+  admin_notes?: string
+  student_notes?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface EnrollmentRequestWithDetails extends EnrollmentRequest {
+  student_name?: string
+  student_number?: string
+  subject_name?: string
+  subject_code?: string
+  career_name?: string
+  cycle_name?: string
+  reviewed_by_name?: string
+}
+
+// Servicios para solicitudes de inscripción
+export const enrollmentRequestService = {
+  async create(request: Omit<EnrollmentRequest, 'id'>) {
+    const { data, error } = await supabase
+      .from('enrollment_requests')
+      .insert([request])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async getAll(filters?: {
+    status?: 'pending' | 'approved' | 'rejected' | 'cancelled'
+    student_id?: string
+    academic_year?: string
+    semester?: number
+  }) {
+    const { data, error } = await supabase.rpc('get_enrollment_requests_with_details', {
+      p_status: filters?.status || null,
+      p_student_id: filters?.student_id || null,
+      p_academic_year: filters?.academic_year || null,
+      p_semester: filters?.semester || null
+    })
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async getById(id: string) {
+    const { data, error } = await supabase
+      .from('enrollment_requests')
+      .select(`
+        *,
+        students(
+          id,
+          student_number,
+          users(first_name, last_name)
+        ),
+        subjects(
+          id,
+          name,
+          code,
+          cycles(
+            id,
+            name,
+            careers(id, name)
+          )
+        )
+      `)
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  async update(id: string, updates: Partial<EnrollmentRequest>) {
+    const { data, error } = await supabase
+      .from('enrollment_requests')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async approve(id: string) {
+    const { error } = await supabase.rpc('approve_enrollment_request', {
+      request_id: id
+    })
+    
+    if (error) throw error
+  },
+
+  async reject(id: string, admin_notes?: string) {
+    const { error } = await supabase.rpc('reject_enrollment_request', {
+      request_id: id,
+      admin_notes: admin_notes || null
+    })
+    
+    if (error) throw error
+  },
+
+  async cancel(id: string) {
+    const { error } = await supabase.rpc('cancel_enrollment_request', {
+      request_id: id
+    })
+    
+    if (error) throw error
+  },
+
+  async getByStudent(studentId: string) {
+    const { data, error } = await supabase
+      .from('enrollment_requests')
+      .select(`
+        *,
+        subjects(
+          id,
+          name,
+          code,
+          cycles(
+            id,
+            name,
+            careers(id, name)
+          )
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data || []
+  }
+}
+

@@ -19,7 +19,7 @@ export function useEnrollments(studentId?: string) {
             student_number,
             users(first_name, last_name, email)
           ),
-          subjects(name, code, cycles(name, year))
+          subjects_new(name, code, career_id)
         `)
         .order('enrollment_date', { ascending: false })
 
@@ -50,7 +50,7 @@ export function useEnrollments(studentId?: string) {
             student_number,
             users(first_name, last_name, email)
           ),
-          subjects(name, code, cycles(name, year))
+          subjects_new(name, code, career_id)
         `)
         .single()
 
@@ -77,7 +77,7 @@ export function useEnrollments(studentId?: string) {
             student_number,
             users(first_name, last_name, email)
           ),
-          subjects(name, code, cycles(name, year))
+          subjects_new(name, code, career_id)
         `)
         .single()
 
@@ -144,7 +144,7 @@ export function useGrades(enrollmentId?: string) {
               student_number,
               users(first_name, last_name, email)
             ),
-            subjects(name, code)
+            subjects_new(name, code)
           ),
           users(first_name, last_name)
         `)
@@ -178,7 +178,7 @@ export function useGrades(enrollmentId?: string) {
               student_number,
               users(first_name, last_name, email)
             ),
-            subjects(name, code)
+            subjects_new(name, code)
           ),
           users(first_name, last_name)
         `)
@@ -208,7 +208,7 @@ export function useGrades(enrollmentId?: string) {
               student_number,
               users(first_name, last_name, email)
             ),
-            subjects(name, code)
+            subjects_new(name, code)
           ),
           users(first_name, last_name)
         `)
@@ -272,7 +272,7 @@ export function useCorrelatives(subjectId?: string) {
         .from('correlatives')
         .select(`
           *,
-          subjects(name, code),
+          subjects_new(name, code),
           required_subjects:subjects!correlatives_required_subject_id_fkey(name, code)
         `)
         .order('created_at', { ascending: false })
@@ -300,7 +300,7 @@ export function useCorrelatives(subjectId?: string) {
         .insert([correlativeData])
         .select(`
           *,
-          subjects(name, code),
+          subjects_new(name, code),
           required_subjects:subjects!correlatives_required_subject_id_fkey(name, code)
         `)
         .single()

@@ -5,12 +5,26 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Crear tipos personalizados
-CREATE TYPE user_role AS ENUM ('admin', 'professor', 'student');
-CREATE TYPE enrollment_status AS ENUM ('enrolled', 'completed', 'dropped');
-CREATE TYPE grade_type AS ENUM ('exam', 'assignment', 'project', 'final');
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('admin', 'professor', 'student');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE enrollment_status AS ENUM ('enrolled', 'completed', 'dropped');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE grade_type AS ENUM ('exam', 'assignment', 'project', 'final');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Tabla de instituciones (multi-tenant)
-CREATE TABLE institutions (
+CREATE TABLE IF NOT EXISTS institutions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -21,7 +35,7 @@ CREATE TABLE institutions (
 );
 
 -- Tabla de usuarios (vinculada a instituciones)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -34,7 +48,7 @@ CREATE TABLE users (
 );
 
 -- Tabla de carreras
-CREATE TABLE careers (
+CREATE TABLE IF NOT EXISTS careers (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -46,7 +60,7 @@ CREATE TABLE careers (
 );
 
 -- Tabla de ciclos (años dentro de una carrera)
-CREATE TABLE cycles (
+CREATE TABLE IF NOT EXISTS cycles (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     career_id UUID NOT NULL REFERENCES careers(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -58,7 +72,7 @@ CREATE TABLE cycles (
 );
 
 -- Tabla de materias
-CREATE TABLE subjects (
+CREATE TABLE IF NOT EXISTS subjects (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     cycle_id UUID NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -73,7 +87,7 @@ CREATE TABLE subjects (
 );
 
 -- Tabla de asignación de profesores a materias
-CREATE TABLE professor_subjects (
+CREATE TABLE IF NOT EXISTS professor_subjects (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     professor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
@@ -82,7 +96,7 @@ CREATE TABLE professor_subjects (
 );
 
 -- Tabla de estudiantes
-CREATE TABLE students (
+CREATE TABLE IF NOT EXISTS students (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
@@ -95,7 +109,7 @@ CREATE TABLE students (
 );
 
 -- Tabla de inscripciones a materias
-CREATE TABLE enrollments (
+CREATE TABLE IF NOT EXISTS enrollments (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
@@ -107,7 +121,7 @@ CREATE TABLE enrollments (
 );
 
 -- Tabla de calificaciones
-CREATE TABLE grades (
+CREATE TABLE IF NOT EXISTS grades (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     enrollment_id UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
     professor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -120,7 +134,7 @@ CREATE TABLE grades (
 );
 
 -- Tabla de correlatividades
-CREATE TABLE correlatives (
+CREATE TABLE IF NOT EXISTS correlatives (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
     required_subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
@@ -130,22 +144,22 @@ CREATE TABLE correlatives (
 );
 
 -- Crear índices para mejorar el rendimiento
-CREATE INDEX idx_users_institution_id ON users(institution_id);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_careers_institution_id ON careers(institution_id);
-CREATE INDEX idx_cycles_career_id ON cycles(career_id);
-CREATE INDEX idx_subjects_cycle_id ON subjects(cycle_id);
-CREATE INDEX idx_professor_subjects_professor_id ON professor_subjects(professor_id);
-CREATE INDEX idx_professor_subjects_subject_id ON professor_subjects(subject_id);
-CREATE INDEX idx_students_user_id ON students(user_id);
-CREATE INDEX idx_students_institution_id ON students(institution_id);
-CREATE INDEX idx_students_career_id ON students(career_id);
-CREATE INDEX idx_enrollments_student_id ON enrollments(student_id);
-CREATE INDEX idx_enrollments_subject_id ON enrollments(subject_id);
-CREATE INDEX idx_grades_enrollment_id ON grades(enrollment_id);
-CREATE INDEX idx_grades_professor_id ON grades(professor_id);
-CREATE INDEX idx_correlatives_subject_id ON correlatives(subject_id);
-CREATE INDEX idx_correlatives_required_subject_id ON correlatives(required_subject_id);
+CREATE INDEX IF NOT EXISTS idx_users_institution_id ON users(institution_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_careers_institution_id ON careers(institution_id);
+CREATE INDEX IF NOT EXISTS idx_cycles_career_id ON cycles(career_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_cycle_id ON subjects(cycle_id);
+CREATE INDEX IF NOT EXISTS idx_professor_subjects_professor_id ON professor_subjects(professor_id);
+CREATE INDEX IF NOT EXISTS idx_professor_subjects_subject_id ON professor_subjects(subject_id);
+CREATE INDEX IF NOT EXISTS idx_students_user_id ON students(user_id);
+CREATE INDEX IF NOT EXISTS idx_students_institution_id ON students(institution_id);
+CREATE INDEX IF NOT EXISTS idx_students_career_id ON students(career_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_student_id ON enrollments(student_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_subject_id ON enrollments(subject_id);
+CREATE INDEX IF NOT EXISTS idx_grades_enrollment_id ON grades(enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_grades_professor_id ON grades(professor_id);
+CREATE INDEX IF NOT EXISTS idx_correlatives_subject_id ON correlatives(subject_id);
+CREATE INDEX IF NOT EXISTS idx_correlatives_required_subject_id ON correlatives(required_subject_id);
 
 -- Función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -157,11 +171,26 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers para actualizar updated_at
+DROP TRIGGER IF EXISTS update_institutions_updated_at ON institutions;
 CREATE TRIGGER update_institutions_updated_at BEFORE UPDATE ON institutions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_careers_updated_at ON careers;
 CREATE TRIGGER update_careers_updated_at BEFORE UPDATE ON careers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_cycles_updated_at ON cycles;
 CREATE TRIGGER update_cycles_updated_at BEFORE UPDATE ON cycles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_subjects_updated_at ON subjects;
 CREATE TRIGGER update_subjects_updated_at BEFORE UPDATE ON subjects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_students_updated_at ON students;
 CREATE TRIGGER update_students_updated_at BEFORE UPDATE ON students FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_enrollments_updated_at ON enrollments;
 CREATE TRIGGER update_enrollments_updated_at BEFORE UPDATE ON enrollments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_grades_updated_at ON grades;
 CREATE TRIGGER update_grades_updated_at BEFORE UPDATE ON grades FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
