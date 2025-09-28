@@ -9,6 +9,7 @@ import EditCareerForm from '@/components/forms/EditCareerForm'
 import CareerConfigModal from '@/components/modals/CareerConfigModal'
 import DeleteCareerModal from '@/components/modals/DeleteCareerModal'
 import { careerService } from '@/lib/supabase-service'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { toast } from 'react-hot-toast'
 import { 
   Plus, 
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react'
 
 export default function CareersPage() {
+  const { institutionId, loading: userLoading } = useCurrentUser()
   const [careers, setCareers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -31,15 +33,19 @@ export default function CareersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedCareer, setSelectedCareer] = useState<any>(null)
 
-  // Cargar carreras al montar el componente
+  // Cargar carreras cuando institutionId esté disponible
   useEffect(() => {
-    loadCareers()
-  }, [])
+    if (institutionId && !userLoading) {
+      loadCareers()
+    }
+  }, [institutionId, userLoading])
 
   const loadCareers = async () => {
+    if (!institutionId) return
+    
     try {
       setLoading(true)
-      const careersData = await careerService.getAll()
+      const careersData = await careerService.getAll(institutionId)
       setCareers(careersData)
     } catch (error) {
       console.error('Error cargando carreras:', error)

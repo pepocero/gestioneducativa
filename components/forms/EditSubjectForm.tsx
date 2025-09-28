@@ -236,7 +236,7 @@ export default function EditSubjectForm({ subject, careers, onClose, onSave }: E
                       }`}
                     >
                       <option value="">Selecciona una carrera</option>
-                      {careers.map((career) => (
+                      {(careers || []).map((career) => (
                         <option key={career.id} value={career.id}>
                           {career.name}
                         </option>

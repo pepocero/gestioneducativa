@@ -9,6 +9,7 @@ import EditCycleForm from '@/components/forms/EditCycleForm'
 import DeleteCycleModal from '@/components/modals/DeleteCycleModal'
 import AssignSubjectsModal from '@/components/modals/AssignSubjectsModal'
 import { cycleService, careerService, subjectService } from '@/lib/supabase-service'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { toast } from 'react-hot-toast'
 import { 
   Plus, 
@@ -22,10 +23,13 @@ import {
   GraduationCap,
   Search,
   Filter,
-  Link
+  Link,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react'
 
 export default function CyclesPage() {
+  const { institutionId, loading: userLoading } = useCurrentUser()
   const [cycles, setCycles] = useState<any[]>([])
   const [careers, setCareers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,19 +41,25 @@ export default function CyclesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCareer, setFilterCareer] = useState<string>('all')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
+  const [expandedCareers, setExpandedCareers] = useState<Set<string>>(new Set())
 
-  // Cargar datos al montar el componente
+  // Cargar datos cuando institutionId esté disponible
   useEffect(() => {
-    loadData()
-  }, [])
+    if (institutionId && !userLoading) {
+      loadData()
+    }
+  }, [institutionId, userLoading])
 
   const loadData = async () => {
+    if (!institutionId) return
+    
     try {
       setLoading(true)
       const [cyclesData, careersData] = await Promise.all([
-        cycleService.getAll(),
-        careerService.getAll()
+        cycleService.getAll(undefined, institutionId), // Filtrar ciclos por institución
+        careerService.getAll(institutionId)
       ])
+      
       setCycles(cyclesData)
       setCareers(careersData)
     } catch (error) {
@@ -96,6 +106,26 @@ export default function CyclesPage() {
     loadData()
     setShowAssignModal(false)
     setSelectedCycle(null)
+  }
+
+  const toggleCareerExpansion = (careerId: string) => {
+    setExpandedCareers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(careerId)) {
+        newSet.delete(careerId)
+      } else {
+        newSet.add(careerId)
+      }
+      return newSet
+    })
+  }
+
+  const expandAllCareers = () => {
+    setExpandedCareers(new Set(Object.keys(cyclesByCareer)))
+  }
+
+  const collapseAllCareers = () => {
+    setExpandedCareers(new Set())
   }
 
   // Filtrar ciclos
@@ -262,8 +292,30 @@ export default function CyclesPage() {
           </CardContent>
         </Card>
 
-        {/* Lista de ciclos agrupados por carrera */}
-        <div className="space-y-6">
+        {/* Controles de expansión */}
+        {Object.keys(cyclesByCareer).length > 0 && (
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={expandAllCareers}
+              className="text-sm"
+            >
+              Expandir Todo
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={collapseAllCareers}
+              className="text-sm"
+            >
+              Colapsar Todo
+            </Button>
+          </div>
+        )}
+
+        {/* Lista de ciclos agrupados por carrera - Diseño Accordion */}
+        <div className="space-y-4">
           {loading ? (
             <Card>
               <CardContent className="p-12">
@@ -303,93 +355,127 @@ export default function CyclesPage() {
             Object.entries(cyclesByCareer).map(([careerId, data]) => {
               const career = (data as any).career
               const careerCycles = (data as any).cycles
+              const isExpanded = expandedCareers.has(careerId)
+              
               return (
-              <Card key={career.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <GraduationCap className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">{career.name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {careerCycles.length} ciclo{careerCycles.length !== 1 ? 's' : ''} • {career.duration_years} año{career.duration_years > 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      career.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {career.is_active ? 'Carrera Activa' : 'Carrera Inactiva'}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {careerCycles
-                      .sort((a: any, b: any) => a.year - b.year)
-                      .map((cycle: any, index: number) => (
-                      <div key={cycle.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-shrink-0">
-                              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <span className="text-sm font-medium text-blue-600">{cycle.year}</span>
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{cycle.name}</h4>
-                              <p className="text-sm text-gray-500">Año {cycle.year} de {career.name}</p>
-                              <div className="flex items-center space-x-4 mt-1">
-                                <span className="text-xs text-gray-400 flex items-center">
-                                  <Calendar className="h-3 w-3 mr-1" />
-                                  Creado: {new Date(cycle.created_at).toLocaleDateString()}
-                                </span>
-                                <span className="text-xs text-gray-400 flex items-center">
-                                  <BookOpen className="h-3 w-3 mr-1" />
-                                  0 materias asignadas
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              cycle.is_active 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {cycle.is_active ? 'Activo' : 'Inactivo'}
-                            </span>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleAssignSubjects(cycle)}
-                              className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
-                            >
-                              <Link className="h-4 w-4 mr-1" />
-                              Asignar Materias
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEditCycle(cycle)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleDeleteCycle(cycle)}
-                              className="text-red-600 hover:text-red-700 hover:border-red-300"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                <Card key={career.id} className="overflow-hidden">
+                  {/* Header de la carrera - siempre visible */}
+                  <div 
+                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    onClick={() => toggleCareerExpansion(careerId)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center">
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5 text-gray-400 mr-2" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-gray-400 mr-2" />
+                          )}
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <GraduationCap className="h-5 w-5 text-blue-600" />
                           </div>
                         </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{career.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {careerCycles.length} ciclo{careerCycles.length !== 1 ? 's' : ''} • {career.duration_years} año{career.duration_years > 1 ? 's' : ''}
+                          </p>
+                        </div>
                       </div>
-                    ))}
+                      <div className="flex items-center space-x-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          career.is_active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {career.is_active ? 'Activa' : 'Inactiva'}
+                        </span>
+                        <span className="text-sm text-gray-400">
+                          {isExpanded ? 'Colapsar' : 'Expandir'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* Contenido de los ciclos - colapsable */}
+                  {isExpanded && (
+                    <CardContent className="p-0">
+                      <div className="divide-y divide-gray-100">
+                        {careerCycles
+                          .sort((a: any, b: any) => a.year - b.year)
+                          .map((cycle: any) => (
+                          <div key={cycle.id} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex-shrink-0">
+                                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <span className="text-sm font-medium text-blue-600">{cycle.year}</span>
+                                  </div>
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900">{cycle.name}</h4>
+                                  <p className="text-sm text-gray-500">Año {cycle.year}</p>
+                                  <div className="flex items-center space-x-4 mt-1">
+                                    <span className="text-xs text-gray-400 flex items-center">
+                                      <Calendar className="h-3 w-3 mr-1" />
+                                      {new Date(cycle.created_at).toLocaleDateString()}
+                                    </span>
+                                    <span className="text-xs text-gray-400 flex items-center">
+                                      <BookOpen className="h-3 w-3 mr-1" />
+                                      0 materias
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  cycle.is_active 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {cycle.is_active ? 'Activo' : 'Inactivo'}
+                                </span>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleAssignSubjects(cycle)
+                                  }}
+                                  className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                                >
+                                  <Link className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleEditCycle(cycle)
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteCycle(cycle)
+                                  }}
+                                  className="text-red-600 hover:text-red-700 hover:border-red-300"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
               )
             })
           )}

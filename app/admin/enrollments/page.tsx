@@ -90,10 +90,20 @@ export default function EnrollmentsPage() {
         icon: GraduationCap, 
         color: 'bg-blue-100 text-blue-800', 
         label: 'Inscrito' 
+      },
+      completed: { 
+        icon: CheckCircle, 
+        color: 'bg-green-100 text-green-800', 
+        label: 'Completado' 
+      },
+      dropped: { 
+        icon: XCircle, 
+        color: 'bg-gray-100 text-gray-800', 
+        label: 'Abandonado' 
       }
     }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.enrolled
     const Icon = config.icon
 
     return (
@@ -120,7 +130,9 @@ export default function EnrollmentsPage() {
     pending: enrollments.filter(e => e.status === 'pending').length,
     approved: enrollments.filter(e => e.status === 'approved').length,
     rejected: enrollments.filter(e => e.status === 'rejected').length,
-    enrolled: enrollments.filter(e => e.status === 'enrolled').length
+    enrolled: enrollments.filter(e => e.status === 'enrolled').length,
+    completed: enrollments.filter(e => e.status === 'completed').length,
+    dropped: enrollments.filter(e => e.status === 'dropped').length
   }
 
   const handleRequestSaved = () => {
@@ -198,6 +210,23 @@ export default function EnrollmentsPage() {
     }
   }
 
+  const handleEnrollStudent = async (enrollmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('enrollments')
+        .update({ status: 'enrolled' })
+        .eq('id', enrollmentId)
+      
+      if (error) throw error
+      
+      toast.success('Estudiante inscrito correctamente')
+      refetch()
+    } catch (error) {
+      console.error('Error inscribiendo estudiante:', error)
+      toast.error('Error inscribiendo estudiante')
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -229,72 +258,86 @@ export default function EnrollmentsPage() {
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <BookOpen className="h-8 w-8 text-blue-600" />
+                  <BookOpen className="h-6 w-6 text-blue-600" />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Total</p>
-                  <p className="text-2xl font-semibold text-gray-900">{statusCounts.total}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-500">Total</p>
+                  <p className="text-xl font-semibold text-gray-900">{statusCounts.total}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Clock className="h-8 w-8 text-yellow-600" />
+                  <Clock className="h-6 w-6 text-yellow-600" />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Pendientes</p>
-                  <p className="text-2xl font-semibold text-gray-900">{statusCounts.pending}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-500">Pendientes</p>
+                  <p className="text-xl font-semibold text-gray-900">{statusCounts.pending}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Aprobadas</p>
-                  <p className="text-2xl font-semibold text-gray-900">{statusCounts.approved}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-500">Aprobadas</p>
+                  <p className="text-xl font-semibold text-gray-900">{statusCounts.approved}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <XCircle className="h-8 w-8 text-red-600" />
+                  <GraduationCap className="h-6 w-6 text-blue-600" />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Rechazadas</p>
-                  <p className="text-2xl font-semibold text-gray-900">{statusCounts.rejected}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-500">Inscritos</p>
+                  <p className="text-xl font-semibold text-gray-900">{statusCounts.enrolled}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <GraduationCap className="h-8 w-8 text-purple-600" />
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Inscritos</p>
-                  <p className="text-2xl font-semibold text-gray-900">{statusCounts.enrolled}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-500">Completados</p>
+                  <p className="text-xl font-semibold text-gray-900">{statusCounts.completed}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <XCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-500">Rechazadas</p>
+                  <p className="text-xl font-semibold text-gray-900">{statusCounts.rejected}</p>
                 </div>
               </div>
             </CardContent>
@@ -317,7 +360,7 @@ export default function EnrollmentsPage() {
                   />
                 </div>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant={filterStatus === 'all' ? 'primary' : 'outline'}
                   size="sm"
@@ -338,6 +381,20 @@ export default function EnrollmentsPage() {
                   onClick={() => setFilterStatus('approved')}
                 >
                   Aprobadas
+                </Button>
+                <Button
+                  variant={filterStatus === 'enrolled' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterStatus('enrolled')}
+                >
+                  Inscritos
+                </Button>
+                <Button
+                  variant={filterStatus === 'completed' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterStatus('completed')}
+                >
+                  Completados
                 </Button>
                 <Button
                   variant={filterStatus === 'rejected' ? 'primary' : 'outline'}
@@ -426,24 +483,33 @@ export default function EnrollmentsPage() {
                         {enrollment.status === 'pending' && (
                           <>
                             <Button 
-                              variant="outline" 
                               size="sm" 
-                              className="text-green-600 hover:text-green-700"
+                              className="!bg-blue-50 !text-blue-600 !border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 border"
                               onClick={() => handleApproveEnrollment(enrollment.id)}
                               title="Aprobar inscripción"
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
                             <Button 
-                              variant="outline" 
                               size="sm" 
-                              className="text-red-600 hover:text-red-700"
+                              className="!bg-red-50 !text-red-600 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 border"
                               onClick={() => handleRejectEnrollment(enrollment.id)}
                               title="Rechazar inscripción"
                             >
                               <XCircle className="h-4 w-4" />
                             </Button>
                           </>
+                        )}
+                        {enrollment.status === 'approved' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-blue-600 hover:text-blue-700"
+                            onClick={() => handleEnrollStudent(enrollment.id)}
+                            title="Inscribir estudiante"
+                          >
+                            <GraduationCap className="h-4 w-4" />
+                          </Button>
                         )}
                         <Button 
                           variant="outline" 
@@ -584,11 +650,11 @@ export default function EnrollmentsPage() {
                       }
                     }}
                   >
-                    <option value="enrolled">Inscrito</option>
                     <option value="pending">Pendiente</option>
                     <option value="approved">Aprobado</option>
-                    <option value="rejected">Rechazado</option>
+                    <option value="enrolled">Inscrito</option>
                     <option value="completed">Completado</option>
+                    <option value="rejected">Rechazado</option>
                     <option value="dropped">Abandonado</option>
                   </select>
                 </div>

@@ -8,6 +8,7 @@ import CreateSubjectForm from '@/components/forms/CreateSubjectForm'
 import EditSubjectForm from '@/components/forms/EditSubjectForm'
 import DeleteSubjectModal from '@/components/modals/DeleteSubjectModal'
 import { subjectService, careerService } from '@/lib/supabase-service'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { toast } from 'react-hot-toast'
 import { 
   Plus, 
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react'
 
 export default function SubjectsPage() {
+  const { institutionId, loading: userLoading } = useCurrentUser()
   const [subjects, setSubjects] = useState<any[]>([])
   const [careers, setCareers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,17 +36,21 @@ export default function SubjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
 
-  // Cargar materias y carreras al montar el componente
+  // Cargar datos cuando institutionId esté disponible  
   useEffect(() => {
-    loadData()
-  }, [])
+    if (institutionId && !userLoading) {
+      loadData()
+    }
+  }, [institutionId, userLoading])
 
   const loadData = async () => {
+    if (!institutionId) return
+    
     try {
       setLoading(true)
       const [subjectsData, careersData] = await Promise.all([
-        subjectService.getAll(),
-        careerService.getAll()
+        subjectService.getAll(institutionId),
+        careerService.getAll(institutionId)
       ])
       setSubjects(subjectsData)
       setCareers(careersData)
@@ -57,9 +63,11 @@ export default function SubjectsPage() {
   }
 
   const loadSubjects = async () => {
+    if (!institutionId) return
+    
     try {
       setLoading(true)
-      const subjectsData = await subjectService.getAll()
+      const subjectsData = await subjectService.getAll(institutionId)
       setSubjects(subjectsData)
     } catch (error) {
       console.error('Error cargando materias:', error)

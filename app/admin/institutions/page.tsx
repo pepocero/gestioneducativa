@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { institutionService } from '@/lib/supabase-service'
 import CreateInstitutionForm from '@/components/forms/CreateInstitutionForm'
 import { toast } from 'react-hot-toast'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Plus, Building2 } from 'lucide-react'
+import { Plus, Building2, ArrowRight } from 'lucide-react'
 
 export default function InstitutionsPage() {
+  const router = useRouter()
   const [institutions, setInstitutions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -119,9 +121,11 @@ export default function InstitutionsPage() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => window.location.href = `/admin/institutions/${institution.id}`}
+                          onClick={() => router.push(`/institutions/${institution.id}`)}
+                          className="flex items-center space-x-2"
                         >
-                          Ver Detalles
+                          <span>Administrar</span>
+                          <ArrowRight className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

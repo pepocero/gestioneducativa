@@ -203,7 +203,7 @@ export default function EditCycleForm({ cycle, careers, onClose, onSave }: EditC
                         errors.career_id ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
-                      {careers.map(career => (
+                      {(careers || []).map(career => (
                         <option key={career.id} value={career.id}>
                           {career.name}
                         </option>

@@ -32,7 +32,7 @@ export default function CreateCycleForm({ careers, onClose, onSave }: CreateCycl
   const [formData, setFormData] = useState<CycleFormData>({
     name: '',
     year: 1,
-    career_id: careers.length > 0 ? careers[0].id : '',
+    career_id: (careers || []).length > 0 ? careers[0].id : '',
     is_active: true
   })
 
@@ -197,7 +197,7 @@ export default function CreateCycleForm({ careers, onClose, onSave }: CreateCycl
                       }`}
                     >
                       <option value="">Selecciona una carrera</option>
-                      {careers.map(career => (
+                      {(careers || []).map(career => (
                         <option key={career.id} value={career.id}>
                           {career.name}
                         </option>

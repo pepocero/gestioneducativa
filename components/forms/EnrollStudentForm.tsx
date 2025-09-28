@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { careerService, subjectService, careerEnrollmentService, subjectEnrollmentService } from '@/lib/supabase-service'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useBasicSecurityForm } from '@/lib/security'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
@@ -37,6 +38,7 @@ interface EnrollStudentFormProps {
 }
 
 export default function EnrollStudentForm({ student, onClose, onSave }: EnrollStudentFormProps) {
+  const { institutionId } = useCurrentUser()
   const [formData, setFormData] = useState<EnrollmentFormData>({
     careerId: '',
     academicYear: new Date().getFullYear().toString(),
@@ -52,21 +54,25 @@ export default function EnrollStudentForm({ student, onClose, onSave }: EnrollSt
   // Hook de seguridad para el formulario
   const { processFormData, isProcessing } = useBasicSecurityForm<EnrollmentFormData>('forms')
 
-  // Cargar carreras al montar el componente
+  // Cargar carreras cuando institutionId esté disponible
   useEffect(() => {
-    loadCareers()
-  }, [])
+    if (institutionId) {
+      loadCareers()
+    }
+  }, [institutionId])
 
   // Cargar materias cuando se selecciona una carrera
   useEffect(() => {
-    if (formData.careerId) {
+    if (formData.careerId && institutionId) {
       loadSubjects()
     }
-  }, [formData.careerId])
+  }, [formData.careerId, institutionId])
 
     const loadCareers = async () => {
+      if (!institutionId) return
+      
       try {
-        const careersData = await careerService.getAll()
+        const careersData = await careerService.getAll(institutionId)
         setCareers(careersData)
       } catch (error) {
         console.error('Error cargando carreras:', error)
@@ -75,8 +81,10 @@ export default function EnrollStudentForm({ student, onClose, onSave }: EnrollSt
     }
 
   const loadSubjects = async () => {
+    if (!institutionId) return
+    
     try {
-      const subjectsData = await subjectService.getAll()
+      const subjectsData = await subjectService.getAll(institutionId)
       // Filtrar materias por carrera seleccionada
       const careerSubjects = subjectsData.filter(subject => subject.career_id === formData.careerId)
       setSubjects(careerSubjects)

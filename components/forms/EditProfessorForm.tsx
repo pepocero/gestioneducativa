@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { professorService } from '@/lib/supabase-service'
-import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { toast } from 'react-hot-toast'
 import { 
   User, 
@@ -22,18 +21,18 @@ interface ProfessorFormData {
   phone: string
 }
 
-interface CreateProfessorFormProps {
+interface EditProfessorFormProps {
+  professor: any
   onClose: () => void
   onSave: () => void
 }
 
-export default function CreateProfessorForm({ onClose, onSave }: CreateProfessorFormProps) {
-  const { institutionId } = useCurrentUser()
+export default function EditProfessorForm({ professor, onClose, onSave }: EditProfessorFormProps) {
   const [formData, setFormData] = useState<ProfessorFormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: ''
+    firstName: professor.first_name || '',
+    lastName: professor.last_name || '',
+    email: professor.email || '',
+    phone: professor.phone || ''
   })
 
   const [errors, setErrors] = useState<Partial<ProfessorFormData>>({})
@@ -71,33 +70,28 @@ export default function CreateProfessorForm({ onClose, onSave }: CreateProfessor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm() || !institutionId) {
-      if (!institutionId) {
-        toast.error('No se puede identificar la institución')
-      }
+    if (!validateForm()) {
       return
     }
 
     setLoading(true)
     try {
-      // Crear profesor en Supabase usando la tabla users
-      const professorData = {
-        institution_id: institutionId,
-        email: formData.email,
-        role: 'professor' as const,
+      // Actualizar profesor en Supabase
+      const updateData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
+        email: formData.email,
         phone: formData.phone
       }
 
-      await professorService.create(professorData)
+      await professorService.update(professor.id, updateData)
       
-      toast.success('Profesor creado exitosamente')
+      toast.success('Profesor actualizado exitosamente')
       onSave()
       onClose()
     } catch (error) {
-      console.error('Error al guardar profesor:', error)
-      toast.error('Error al crear el profesor')
+      console.error('Error al actualizar profesor:', error)
+      toast.error('Error al actualizar el profesor')
     } finally {
       setLoading(false)
     }
@@ -110,12 +104,12 @@ export default function CreateProfessorForm({ onClose, onSave }: CreateProfessor
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <GraduationCap className="h-6 w-6 text-purple-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <GraduationCap className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Nuevo Profesor</h2>
-                <p className="text-sm text-gray-500">Completa la información del profesor</p>
+                <h2 className="text-2xl font-bold text-gray-900">Editar Profesor</h2>
+                <p className="text-sm text-gray-500">Modifica la información del profesor</p>
               </div>
             </div>
             <Button variant="outline" onClick={onClose}>
@@ -226,6 +220,35 @@ export default function CreateProfessorForm({ onClose, onSave }: CreateProfessor
               </CardContent>
             </Card>
 
+            {/* Información del Sistema */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-medium text-gray-900">Información del Sistema</h3>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">ID:</span>
+                      <span className="text-gray-600 ml-2">{professor.id}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Rol:</span>
+                      <span className="text-gray-600 ml-2 capitalize">{professor.role}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Fecha de Registro:</span>
+                      <span className="text-gray-600 ml-2">{new Date(professor.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Última Actualización:</span>
+                      <span className="text-gray-600 ml-2">{new Date(professor.updated_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Botones de Acción */}
             <div className="flex justify-end space-x-3 pt-6 border-t">
               <Button type="button" variant="outline" onClick={onClose}>
@@ -235,12 +258,12 @@ export default function CreateProfessorForm({ onClose, onSave }: CreateProfessor
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Guardando...
+                    Actualizando...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Guardar Profesor
+                    Actualizar Profesor
                   </>
                 )}
               </Button>

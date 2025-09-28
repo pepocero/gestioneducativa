@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { careerService } from '@/lib/supabase-service'
-import { supabase } from '@/lib/supabase'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { toast } from 'react-hot-toast'
 import { 
   GraduationCap, 
@@ -33,6 +33,7 @@ interface CreateCareerFormProps {
 }
 
 export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormProps) {
+  const { institutionId } = useCurrentUser()
   const [formData, setFormData] = useState<CareerFormData>({
     name: '',
     description: '',
@@ -78,46 +79,33 @@ export default function CreateCareerForm({ onClose, onSave }: CreateCareerFormPr
       return
     }
 
+    if (!institutionId) {
+      toast.error('Error: No se pudo obtener la información de la institución')
+      return
+    }
+
     setLoading(true)
     try {
-      // Obtener el usuario actual y su institución
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        toast.error('Usuario no autenticado')
-        return
-      }
-
-      // Obtener la institución del usuario
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('institution_id')
-        .eq('id', user.id)
-        .single()
-
-      if (userError || !userData) {
-        console.error('Error obteniendo institución del usuario:', userError)
-        toast.error('Error obteniendo información del usuario')
-        return
-      }
-
-      // Crear carrera en Supabase
+      // Crear carrera con el institutionId del hook
       const careerData = {
-        institution_id: userData.institution_id,
+        institution_id: institutionId,
         name: formData.name,
         description: formData.description,
         duration_years: formData.duration_years,
         is_active: true
       }
 
+      console.log('🔍 [DEBUG] Creando carrera con institutionId:', institutionId)
+      console.log('🔍 [DEBUG] Datos de carrera:', careerData)
+
       const newCareer = await careerService.create(careerData)
-      console.log('Carrera creada:', newCareer)
+      console.log('✅ Carrera creada exitosamente:', newCareer)
       
       toast.success('Carrera creada exitosamente')
       onSave()
       onClose()
     } catch (error) {
-      console.error('Error al crear carrera:', error)
+      console.error('❌ Error al crear carrera:', error)
       toast.error('Error al crear la carrera')
     } finally {
       setLoading(false)

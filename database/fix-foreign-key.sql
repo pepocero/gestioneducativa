@@ -47,3 +47,4 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
   AND tc.table_name='enrollments'
   AND kcu.column_name = 'subject_id';
 
+

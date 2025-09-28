@@ -41,7 +41,7 @@ export default function CreateSubjectForm({ careers, onClose, onSave }: CreateSu
     description: '',
     credits: 3,
     hours_per_week: 4,
-    career_id: careers.length > 0 ? careers[0].id : '',
+    career_id: (careers || []).length > 0 ? careers[0].id : '',
     is_active: true
   })
 
@@ -251,7 +251,7 @@ export default function CreateSubjectForm({ careers, onClose, onSave }: CreateSu
                       }`}
                     >
                       <option value="">Selecciona una carrera</option>
-                      {careers.map((career) => (
+                      {(careers || []).map((career) => (
                         <option key={career.id} value={career.id}>
                           {career.name}
                         </option>

@@ -43,3 +43,4 @@ JOIN cycles cy ON s.cycle_id = cy.id
 JOIN careers c ON cy.career_id = c.id
 WHERE s.name IN ('Matematicas 1', 'Quimica Basica');
 
+

@@ -36,3 +36,4 @@ SELECT 'subject_enrollments' as tabla, COUNT(*) as registros FROM subject_enroll
 UNION ALL
 SELECT 'enrollments' as tabla, COUNT(*) as registros FROM enrollments;
 
+

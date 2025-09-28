@@ -21,7 +21,8 @@ import {
   Menu,
   X,
   Calendar,
-  ClipboardList
+  ClipboardList,
+  Building2
 } from 'lucide-react'
 
 interface UserProfile {
@@ -93,22 +94,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!currentUser) {
       return [
         ...baseItems,
-        { name: 'Carreras', href: '/admin/careers', icon: GraduationCap, roles: ['admin'] },
-        { name: 'Materias', href: '/admin/subjects', icon: BookOpen, roles: ['admin'] },
-        { name: 'Ciclos', href: '/admin/cycles', icon: Calendar, roles: ['admin'] },
+        { name: 'Instituciones', href: '/admin/institutions', icon: Building2, roles: ['admin'] },
       ]
     }
 
     if (isAdmin) {
       return [
         ...baseItems,
-        { name: 'Instituciones', href: '/admin/institutions', icon: Settings, roles: ['admin'] },
+        { name: 'Instituciones', href: '/admin/institutions', icon: Building2, roles: ['admin'] },
         { name: 'Usuarios', href: '/admin/users', icon: Users, roles: ['admin'] },
-        { name: 'Carreras', href: '/admin/careers', icon: GraduationCap, roles: ['admin'] },
-        { name: 'Materias', href: '/admin/subjects', icon: BookOpen, roles: ['admin'] },
-        { name: 'Ciclos', href: '/admin/cycles', icon: Calendar, roles: ['admin'] },
-        { name: 'Estudiantes', href: '/admin/students', icon: UserCheck, roles: ['admin'] },
-        { name: 'Inscripciones', href: '/admin/enrollments', icon: ClipboardList, roles: ['admin'] },
       ]
     }
 

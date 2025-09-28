@@ -144,6 +144,19 @@ export interface Grade {
   description?: string
 }
 
+export interface ProfessorSubject {
+  id?: string
+  professor_id: string
+  subject_id: string
+  created_at?: string
+}
+
+export interface ProfessorSubjectWithDetails extends ProfessorSubject {
+  subject_name?: string
+  subject_code?: string
+  professor_name?: string
+}
+
 // Servicios para estudiantes
 export const studentService = {
   async create(student: Omit<Student, 'id'>) {
@@ -400,14 +413,21 @@ export const careerService = {
 
 // Servicios para ciclos
 export const cycleService = {
-  async getAll(careerId?: string) {
+  async getAll(careerId?: string, institutionId?: string) {
     let query = supabase.from('cycles').select('*')
     
     if (careerId) {
+      // Si se proporciona careerId, filtrar por esa carrera específica
       query = query.eq('career_id', careerId)
+    } else if (institutionId) {
+      // Si no hay careerId pero sí institutionId, obtener ciclos de todas las carreras de la institución
+      query = query.select(`
+        *,
+        career:careers!inner(institution_id)
+      `).eq('career.institution_id', institutionId)
     }
     
-    const { data, error } = await query
+    const { data, error } = await query.order('name')
     if (error) throw error
     return data || []
   },
@@ -465,6 +485,7 @@ export const subjectService = {
     }
     
     const { data, error } = await query.order('name')
+    
     if (error) throw error
     return data || []
   },
@@ -815,6 +836,217 @@ export const gradeService = {
     
     if (error) throw error
     return data
+  }
+}
+
+// Servicios para asignaciones profesor-materia
+export const professorSubjectService = {
+  async assign(assignment: Omit<ProfessorSubject, 'id'>) {
+    // Intentar con la tabla nueva primero, si falla usar la tabla vieja
+    try {
+      const { data, error } = await supabase
+        .from('professor_subjects_new')
+        .insert([assignment])
+        .select()
+      
+      if (error) throw error
+      return data[0]
+    } catch (error) {
+      // Fallback a la tabla original si la nueva no existe
+      const { data, error: fallbackError } = await supabase
+        .from('professor_subjects')
+        .insert([assignment])
+        .select()
+      
+      if (fallbackError) throw fallbackError
+      return data[0]
+    }
+  },
+
+  async unassign(professorId: string, subjectId: string) {
+    // Intentar con ambas tablas
+    try {
+      await supabase
+        .from('professor_subjects_new')
+        .delete()
+        .eq('professor_id', professorId)
+        .eq('subject_id', subjectId)
+    } catch (error) {
+      // Fallback
+      const { error: fallbackError } = await supabase
+        .from('professor_subjects')
+        .delete()
+        .eq('professor_id', professorId)
+        .eq('subject_id', subjectId)
+      
+      if (fallbackError) throw fallbackError
+    }
+  },
+
+  async getByProfessor(professorId: string) {
+    // Intentar con la tabla nueva primero
+    try {
+      const { data, error } = await supabase
+        .from('professor_subjects_new')
+        .select(`
+          *,
+          subjects_new(
+            id,
+            name,
+            code,
+            credits,
+            hours_per_week
+          )
+        `)
+        .eq('professor_id', professorId)
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      // Fallback - usar la tabla vieja con subjects (no subjects_new)
+      const { data, error: fallbackError } = await supabase
+        .from('professor_subjects')
+        .select(`
+          *,
+          subjects(
+            id,
+            name,
+            code,
+            credits,
+            hours_per_week
+          )
+        `)
+        .eq('professor_id', professorId)
+      
+      if (fallbackError) throw fallbackError
+      return data || []
+    }
+  },
+
+  async getBySubject(subjectId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('professor_subjects_new')
+        .select(`
+          *,
+          users(
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('subject_id', subjectId)
+        .eq('users.role', 'professor')
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      // Fallback
+      const { data, error: fallbackError } = await supabase
+        .from('professor_subjects')
+        .select(`
+          *,
+          users(
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('subject_id', subjectId)
+        .eq('users.role', 'professor')
+      
+      if (fallbackError) throw fallbackError
+      return data || []
+    }
+  },
+
+  async getAssignmentsWithDetails(institutionId?: string) {
+    try {
+      let query = supabase
+        .from('professor_subjects_new')
+        .select(`
+          *,
+          users(
+            id,
+            first_name,
+            last_name,
+            email,
+            institution_id
+          ),
+          subjects_new(
+            id,
+            name,
+            code,
+            credits,
+            institution_id
+          )
+        `)
+        .eq('users.role', 'professor')
+      
+      if (institutionId) {
+        query = query.eq('users.institution_id', institutionId)
+      }
+      
+      const { data, error } = await query
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      // Fallback
+      let query = supabase
+        .from('professor_subjects')
+        .select(`
+          *,
+          users(
+            id,
+            first_name,
+            last_name,
+            email,
+            institution_id
+          ),
+          subjects(
+            id,
+            name,
+            code,
+            credits
+          )
+        `)
+        .eq('users.role', 'professor')
+      
+      if (institutionId) {
+        query = query.eq('users.institution_id', institutionId)
+      }
+      
+      const { data, error: fallbackError } = await query
+      if (fallbackError) throw fallbackError
+      return data || []
+    }
+  },
+
+  async isAssigned(professorId: string, subjectId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('professor_subjects_new')
+        .select('id')
+        .eq('professor_id', professorId)
+        .eq('subject_id', subjectId)
+        .single()
+      
+      if (error && error.code !== 'PGRST116') throw error
+      return data !== null
+    } catch (error) {
+      // Fallback
+      const { data, error: fallbackError } = await supabase
+        .from('professor_subjects')
+        .select('id')
+        .eq('professor_id', professorId)
+        .eq('subject_id', subjectId)
+        .single()
+      
+      if (fallbackError && fallbackError.code !== 'PGRST116') throw fallbackError
+      return data !== null
+    }
   }
 }
 
