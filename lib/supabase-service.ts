@@ -312,26 +312,46 @@ export const institutionService = {
   },
 
   async create(institution: Omit<Institution, 'id'>) {
-    // Crear la institución usando cliente normal con políticas RLS
-    const { data, error } = await supabase
-      .from('institutions')
-      .insert([institution])
-      .select()
+    console.log('🏗️ Iniciando creación de institución:', institution)
     
-    if (error) throw error
-    const newInstitution = data[0]
+    try {
+      // Crear la institución usando cliente normal con políticas RLS
+      const { data, error } = await supabase
+        .from('institutions')
+        .insert([institution])
+        .select()
+      
+      if (error) {
+        console.error('❌ Error creando institución en base de datos:', error)
+        throw new Error(`Error al crear institución: ${error.message}`)
+      }
+      
+      if (!data || data.length === 0) {
+        throw new Error('No se pudo crear la institución - datos vacíos')
+      }
+      
+      const newInstitution = data[0]
+      console.log('✅ Institución creada en base de datos:', newInstitution)
 
-    // Vincular automáticamente al usuario a la institución creada usando función SQL
-    const { error: linkError } = await supabase.rpc('link_user_to_institution', {
-      institution_id: newInstitution.id
-    })
+      // Vincular automáticamente al usuario a la institución creada usando función SQL
+      console.log('🔗 Intentando vincular usuario a institución:', newInstitution.id)
+      const { error: linkError } = await supabase.rpc('link_user_to_institution', {
+        institution_id: newInstitution.id
+      })
 
-    if (linkError) {
-      console.error('Error vinculando usuario a institución:', linkError)
-      // No lanzar error aquí para no romper el flujo de creación
+      if (linkError) {
+        console.error('⚠️ Error vinculando usuario a institución:', linkError)
+        // No lanzar error aquí para no romper el flujo de creación
+        // La institución se creó correctamente, solo falló la vinculación automática
+      } else {
+        console.log('✅ Usuario vinculado exitosamente a la institución')
+      }
+
+      return newInstitution
+    } catch (error: any) {
+      console.error('❌ Error completo en institutionService.create:', error)
+      throw error
     }
-
-    return newInstitution
   },
 
   async update(id: string, updates: Partial<Institution>) {

@@ -22,8 +22,10 @@ import {
   X,
   Calendar,
   ClipboardList,
-  Building2
+  Building2,
+  Home
 } from 'lucide-react'
+import NoInstitutionAssigned from '@/components/NoInstitutionAssigned'
 
 interface UserProfile {
   id: string
@@ -31,12 +33,12 @@ interface UserProfile {
   role: 'admin' | 'professor' | 'student'
   first_name: string
   last_name: string
-  institution_id: string
+  institution_id: string | null
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut, loading } = useAuth()
-  const { user: currentUser, loading: userLoading, isAdmin, isProfessor, isStudent } = useCurrentUser()
+  const { user: currentUser, loading: userLoading, isAdmin, isProfessor, isStudent, hasInstitution } = useCurrentUser()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [stats, setStats] = useState({
@@ -87,6 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const getNavigationItems = () => {
     const baseItems = [
+      { name: 'Página de Inicio', href: '/', icon: Home, roles: ['admin', 'professor', 'student'] },
       { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: ['admin', 'professor', 'student'] },
     ]
 
@@ -196,7 +199,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <Main className="flex-1">
           <Container maxWidth="full" className="py-6">
-            {children}
+            {!userLoading && currentUser && !hasInstitution ? (
+              <NoInstitutionAssigned userRole={currentUser.role} />
+            ) : (
+              children
+            )}
           </Container>
         </Main>
       </div>

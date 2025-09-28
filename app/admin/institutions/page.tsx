@@ -16,9 +16,22 @@ export default function InstitutionsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
 
+  // Debug: Log cuando el componente se monta
+  useEffect(() => {
+    console.log('🏢 InstitutionsPage montado, showCreateForm:', showCreateForm)
+  }, [showCreateForm])
+
   useEffect(() => {
     loadInstitutions()
   }, [])
+
+  // Auto-abrir modal si no hay instituciones
+  useEffect(() => {
+    if (!loading && institutions.length === 0) {
+      console.log('🚀 Auto-abriendo modal porque no hay instituciones')
+      setShowCreateForm(true)
+    }
+  }, [loading, institutions.length])
 
   const loadInstitutions = async () => {
     try {
@@ -33,9 +46,14 @@ export default function InstitutionsPage() {
   }
 
   const handleCreateInstitution = () => {
-    console.log('Nueva institución creada')
+    console.log('✅ Nueva institución creada')
     toast.success('Institución creada exitosamente')
     loadInstitutions() // Recargar la lista
+  }
+
+  const handleOpenCreateForm = () => {
+    console.log('🔧 Abriendo formulario de creación de institución')
+    setShowCreateForm(true)
   }
 
   if (loading) {
@@ -58,7 +76,7 @@ export default function InstitutionsPage() {
               Gestiona las instituciones educativas del sistema
             </p>
           </div>
-          <Button onClick={() => setShowCreateForm(true)}>
+          <Button onClick={handleOpenCreateForm}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva Institución
           </Button>
@@ -92,7 +110,7 @@ export default function InstitutionsPage() {
                 <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No hay instituciones</h3>
                 <p className="text-gray-500 mb-4">Comienza creando tu primera institución</p>
-                <Button onClick={() => setShowCreateForm(true)}>
+                <Button onClick={handleOpenCreateForm}>
                   <Plus className="h-4 w-4 mr-2" />
                   Crear Primera Institución
                 </Button>
@@ -135,13 +153,127 @@ export default function InstitutionsPage() {
             )}
           </CardContent>
         </Card>
-        {/* Formulario de creación de institución */}
+        {/* Modal de creación de institución - Versión Simple */}
         {showCreateForm && (
-          <CreateInstitutionForm
-            onClose={() => setShowCreateForm(false)}
-            onSave={handleCreateInstitution}
-          />
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+            style={{ zIndex: 9999 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowCreateForm(false)
+              }
+            }}
+          >
+            <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Nueva Institución</h2>
+                <button 
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                const institutionData = {
+                  name: formData.get('name') as string,
+                  email: formData.get('email') as string,
+                  phone: formData.get('phone') as string,
+                  address: formData.get('address') as string
+                }
+                
+                console.log('🏗️ Creando institución con datos:', institutionData)
+                
+                try {
+                  const newInstitution = await institutionService.create(institutionData)
+                  console.log('✅ Institución creada:', newInstitution)
+                  toast.success('Institución creada exitosamente')
+                  setShowCreateForm(false)
+                  loadInstitutions()
+                } catch (error: any) {
+                  console.error('❌ Error:', error)
+                  toast.error(`Error: ${error.message}`)
+                }
+              }}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre de la Institución *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ingresa el nombre de la institución"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="institucion@ejemplo.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Teléfono *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+54 11 1234-5678"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Dirección *
+                    </label>
+                    <textarea
+                      name="address"
+                      required
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Calle 123, Ciudad, Provincia, País"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateForm(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Crear Institución
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
+        
+        {/* Debug info */}
+        {console.log('🔍 Debug - showCreateForm:', showCreateForm, 'institutions.length:', institutions.length)}
       </div>
     </DashboardLayout>
   )

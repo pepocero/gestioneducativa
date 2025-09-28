@@ -44,3 +44,4 @@ JOIN careers c ON cy.career_id = c.id
 WHERE s.name IN ('Matematicas 1', 'Quimica Basica');
 
 
+

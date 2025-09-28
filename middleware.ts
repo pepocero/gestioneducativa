@@ -6,10 +6,8 @@ export async function middleware(req: NextRequest) {
   // Por ahora, vamos a deshabilitar la protección de rutas temporalmente
   // para que puedas acceder al dashboard y probar la funcionalidad
   
-  // Redirigir desde la página principal al login
-  if (req.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/auth/login', req.url))
-  }
+  // La página principal (/) ahora muestra la landing page, no redirige al login
+  // Solo redirigimos rutas protegidas si es necesario
 
   console.log('✅ Middleware completado')
   return NextResponse.next()

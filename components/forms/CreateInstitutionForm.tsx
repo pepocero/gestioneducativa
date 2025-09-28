@@ -76,16 +76,26 @@ export default function CreateInstitutionForm({ onClose, onSave }: CreateInstitu
 
     setLoading(true)
     try {
+      console.log('🏫 Intentando crear institución con datos:', formData)
+      
       // Crear institución en Supabase
       const newInstitution = await institutionService.create(formData)
-      console.log('Institución creada:', newInstitution)
+      console.log('✅ Institución creada exitosamente:', newInstitution)
       
       toast.success('Institución creada exitosamente')
       onSave()
       onClose()
-    } catch (error) {
-      console.error('Error al crear institución:', error)
-      toast.error('Error al crear la institución')
+    } catch (error: any) {
+      console.error('❌ Error al crear institución:', error)
+      
+      // Mostrar error más específico
+      const errorMessage = error?.message || 'Error desconocido al crear la institución'
+      toast.error(`Error: ${errorMessage}`)
+      
+      // Si es un error de permisos, mostrar mensaje específico
+      if (errorMessage.includes('permission') || errorMessage.includes('RLS')) {
+        toast.error('Error de permisos. Verifica que tienes los permisos necesarios.')
+      }
     } finally {
       setLoading(false)
     }
@@ -226,6 +236,7 @@ export default function CreateInstitutionForm({ onClose, onSave }: CreateInstitu
     </div>
   )
 }
+
 
 
 

@@ -334,12 +334,19 @@ export default function RegisterForm() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <Link
               href="/auth/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
+              className="font-medium text-primary-600 hover:text-primary-500 block"
             >
               ¿Ya tienes cuenta? Inicia sesión aquí
+            </Link>
+            <Link
+              href="/"
+              className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center space-x-1"
+            >
+              <span>←</span>
+              <span>Volver al inicio</span>
             </Link>
           </div>
         </form>

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 interface User {
   id: string
-  institution_id: string
+  institution_id: string | null
   email: string
   role: 'admin' | 'professor' | 'student'
   first_name: string
@@ -66,6 +66,7 @@ export function useCurrentUser() {
   const isAdmin = user?.role === 'admin'
   const isProfessor = user?.role === 'professor'
   const isStudent = user?.role === 'student'
+  const hasInstitution = user?.institution_id !== null && user?.institution_id !== undefined
 
   return {
     user,
@@ -75,6 +76,7 @@ export function useCurrentUser() {
     isAdmin,
     isProfessor,
     isStudent,
+    hasInstitution,
     institutionId: user?.institution_id
   }
 }

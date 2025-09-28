@@ -37,3 +37,4 @@ UNION ALL
 SELECT 'enrollments' as tabla, COUNT(*) as registros FROM enrollments;
 
 
+

@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS institutions (
 -- Tabla de usuarios (vinculada a instituciones)
 CREATE TABLE IF NOT EXISTS users (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
     role user_role NOT NULL DEFAULT 'student',
     first_name VARCHAR(100) NOT NULL,
